@@ -12,11 +12,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Package V1-V5
+      - name: Package V1-V6
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force releases-build | Out-Null
-          foreach ($v in 1..5) {
+          foreach ($v in 1..6) {
             $src = "versions/v$v"
             if (Test-Path $src) {
               Compress-Archive -Path "$src\*" -DestinationPath "releases-build\Codex-Doctor-V$v.zip" -Force
@@ -24,5 +24,5 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: Codex-Doctor-V1-V5
+          name: Codex-Doctor-V1-V6
           path: releases-build/*.zip
