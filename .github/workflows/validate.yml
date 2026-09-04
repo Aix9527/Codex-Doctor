@@ -25,6 +25,12 @@ jobs:
             $errors | ForEach-Object { Write-Error $_ }
             exit 1
           }
+      - name: Run V6 diagnosis tests
+        shell: pwsh
+        run: |
+          if (Test-Path 'versions/v6/tests/Diagnosis.Tests.ps1') {
+            & 'versions/v6/tests/Diagnosis.Tests.ps1'
+          }
       - name: Verify release packages exist
         shell: pwsh
         run: |
