@@ -1,0 +1,58 @@
+name: release-v7.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'versions/v7/**'
+      - 'RELEASE_NOTES_V7.1.md'
+      - '.github/workflows/release-v7.1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned ps2exe package
+        shell: powershell
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          $moduleRoot = Join-Path $PWD '.ci\modules\ps2exe\1.0.18'
+          New-Item -ItemType Directory -Force -Path $moduleRoot | Out-Null
+          $pkg = Join-Path $env:TEMP 'ps2exe.1.0.18.zip'
+          Invoke-WebRequest 'https://www.powershellgallery.com/api/v2/package/ps2exe/1.0.18' -OutFile $pkg -UseBasicParsing
+          Expand-Archive -Path $pkg -DestinationPath $moduleRoot -Force
+          $env:PSModulePath = (Join-Path $PWD '.ci\modules') + ';' + $env:PSModulePath
+          "PSModulePath=$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Import-Module ps2exe -RequiredVersion 1.0.18 -Force
+      - name: Build and verify V7.1 EXE
+        shell: powershell
+        run: |
+          & '.\versions\v7\Build-EXE.ps1' -OutputPath '.\versions\v7\CodexDoctorV7.exe'
+          $exe = Resolve-Path '.\versions\v7\CodexDoctorV7.exe'
+          $bytes=[IO.File]::ReadAllBytes($exe)
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Output is not a PE executable.' }
+      - name: Package release assets
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force '.\dist\Codex-Doctor-V7.1' | Out-Null
+          Copy-Item '.\versions\v7\*' '.\dist\Codex-Doctor-V7.1\' -Recurse -Force
+          Compress-Archive -Path '.\dist\Codex-Doctor-V7.1\*' -DestinationPath '.\dist\Codex-Doctor-V7.1-Windows.zip' -Force
+          $hash=(Get-FileHash '.\dist\Codex-Doctor-V7.1-Windows.zip' -Algorithm SHA256).Hash
+          Set-Content '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' "$hash  Codex-Doctor-V7.1-Windows.zip" -Encoding ASCII
+      - name: Create GitHub Release v7.1
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v7.1 --repo "$env:GITHUB_REPOSITORY" 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload v7.1 '.\dist\Codex-Doctor-V7.1-Windows.zip' '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' --clobber --repo "$env:GITHUB_REPOSITORY"
+          } else {
+            gh release create v7.1 '.\dist\Codex-Doctor-V7.1-Windows.zip' '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V7.1' --notes-file '.\RELEASE_NOTES_V7.1.md' --repo "$env:GITHUB_REPOSITORY"
+          }

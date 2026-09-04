@@ -1,5 +1,14 @@
 # Changelog
 
+## V7.1
+- Release Edition based on V7 Unified GUI
+- Reproducible Windows EXE launcher build using pinned `ps2exe 1.0.18`
+- Portable `Codex-Doctor-V7.1-Windows.zip` packaging
+- SHA256 checksum generation for release verification
+- Current-user installer and uninstaller scripts
+- EXE launcher keeps PowerShell modules external and auditable instead of hiding runtime logic
+- Windows CI validates generated EXE has a PE `MZ` header before packaging
+
 ## V7
 - Unified WinForms GUI combining V5 repair/migration and V6 diagnosis
 - RepairPlan decision engine separates diagnosis from mutation

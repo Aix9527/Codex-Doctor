@@ -1,0 +1,49 @@
+name: build-v7.1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'versions/v7/**'
+      - '.github/workflows/build-v7.1.yml'
+
+jobs:
+  build-v7-1:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned ps2exe package
+        shell: powershell
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          $moduleRoot = Join-Path $PWD '.ci\modules\ps2exe\1.0.18'
+          New-Item -ItemType Directory -Force -Path $moduleRoot | Out-Null
+          $pkg = Join-Path $env:TEMP 'ps2exe.1.0.18.zip'
+          Invoke-WebRequest 'https://www.powershellgallery.com/api/v2/package/ps2exe/1.0.18' -OutFile $pkg -UseBasicParsing
+          Expand-Archive -Path $pkg -DestinationPath $moduleRoot -Force
+          $env:PSModulePath = (Join-Path $PWD '.ci\modules') + ';' + $env:PSModulePath
+          "PSModulePath=$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Import-Module ps2exe -RequiredVersion 1.0.18 -Force
+          if (-not (Get-Command Invoke-ps2exe -ErrorAction SilentlyContinue)) { throw 'Invoke-ps2exe not available.' }
+      - name: Build EXE launcher
+        shell: powershell
+        run: |
+          & '.\versions\v7\Build-EXE.ps1' -OutputPath '.\versions\v7\CodexDoctorV7.exe'
+          if (-not (Test-Path '.\versions\v7\CodexDoctorV7.exe')) { throw 'Missing CodexDoctorV7.exe' }
+          $bytes=[IO.File]::ReadAllBytes((Resolve-Path '.\versions\v7\CodexDoctorV7.exe'))
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Output is not a PE executable.' }
+      - name: Package V7.1 portable release
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force '.\dist\Codex-Doctor-V7.1' | Out-Null
+          Copy-Item '.\versions\v7\*' '.\dist\Codex-Doctor-V7.1\' -Recurse -Force
+          Compress-Archive -Path '.\dist\Codex-Doctor-V7.1\*' -DestinationPath '.\dist\Codex-Doctor-V7.1-Windows.zip' -Force
+          $hash=(Get-FileHash '.\dist\Codex-Doctor-V7.1-Windows.zip' -Algorithm SHA256).Hash
+          Set-Content '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' "$hash  Codex-Doctor-V7.1-Windows.zip" -Encoding ASCII
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Doctor-V7.1-Windows
+          path: |
+            dist/Codex-Doctor-V7.1-Windows.zip
+            dist/Codex-Doctor-V7.1-Windows.zip.sha256
+          if-no-files-found: error
