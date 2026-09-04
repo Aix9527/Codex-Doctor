@@ -31,6 +31,15 @@ jobs:
           if (Test-Path 'versions/v6/tests/Diagnosis.Tests.ps1') {
             & 'versions/v6/tests/Diagnosis.Tests.ps1'
           }
+      - name: Run V7 tests
+        shell: pwsh
+        run: |
+          if (Test-Path 'versions/v7/tests') {
+            Get-ChildItem 'versions/v7/tests' -Filter '*.Tests.ps1' | Sort-Object Name | ForEach-Object {
+              Write-Host "Running $($_.FullName)"
+              & $_.FullName
+            }
+          }
       - name: Verify release packages exist
         shell: pwsh
         run: |
