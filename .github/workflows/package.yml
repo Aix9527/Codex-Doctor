@@ -1,0 +1,28 @@
+name: package-versions
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'versions/**'
+      - '.github/workflows/package.yml'
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package V1-V5
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force releases-build | Out-Null
+          foreach ($v in 1..5) {
+            $src = "versions/v$v"
+            if (Test-Path $src) {
+              Compress-Archive -Path "$src\*" -DestinationPath "releases-build\Codex-Doctor-V$v.zip" -Force
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Doctor-V1-V5
+          path: releases-build/*.zip

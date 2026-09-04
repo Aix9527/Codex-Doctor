@@ -1,30 +1,33 @@
 # Codex Doctor
 
-Windows Codex / ChatGPT Desktop 连接诊断、代理自动修复与 `.codex` 数据迁移工具。
+Windows Codex / ChatGPT Desktop 连接诊断、代理修复与 `.codex` 数据迁移工具。
 
-## Versions
+## 推荐版本
 
-| Version | Package | Highlights |
-|---|---|---|
-| V1 | `releases/Codex-Doctor-V1.zip` | 基础代理端口扫描，自动写入 `~/.codex/.env` |
-| V2 | `releases/Codex-Doctor-V2.zip` | 诊断、代理修复、`.codex` D/E 盘迁移与回滚 |
-| V3 | `releases/Codex-Doctor-V3.zip` | Clash Verge / Mihomo 配置识别 + 实际 HTTPS 代理测试 |
-| V4 | `releases/Codex-Doctor-V4-GUI.zip` | Windows WinForms GUI，一键诊断/修复/迁移/恢复 |
-| V5 | `releases/Codex-Doctor-V5-Installer.zip` | 安装版、健康状态灯、快捷方式、重启、报告导出、EXE 构建辅助 |
+当前推荐 **V5 Installer Edition**。它提供 GUI 健康状态、Clash Verge / Mihomo 代理检测、Reconnecting 修复、`.codex` D/E 盘迁移与恢复、诊断报告、桌面快捷方式和可选 EXE 构建脚本。
 
-## Recommended
+## 版本目录
 
-建议新用户直接使用 **V5**。解压 `releases/Codex-Doctor-V5-Installer.zip` 后运行 `安装_Codex_Doctor_V5.bat`。
+- `versions/v1` — 初代代理端口扫描与 `.env` 写入
+- `versions/v2` — 代理修复 + `.codex` 迁移/回滚
+- `versions/v3` — Clash/Mihomo 配置识别 + 实际 HTTPS 代理测试
+- `versions/v4` — WinForms GUI
+- `versions/v5` — 安装版 GUI、健康灯、重启、报告、卸载与 EXE 构建脚本
 
-## Main capabilities
+## Releases
 
-- 检测 Codex / ChatGPT Desktop 常见 `Reconnecting` 连接问题。
-- 检测 Windows 系统代理与常见 Clash/Mihomo 本地代理端口。
-- 自动创建或修改 `%USERPROFILE%\.codex\.env`。
-- 写入 `HTTP_PROXY` / `HTTPS_PROXY` 及对应小写变量。
-- 修改前自动备份配置。
-- 支持把 `%USERPROFILE%\.codex` 迁移到 D/E 盘并建立 NTFS Junction。
-- 支持恢复原目录。
-- V3+ 支持代理 HTTPS 实测；V4+ 提供 GUI；V5 提供安装/卸载和诊断报告。
+历史 ZIP 包保存在 `releases/`。
 
-> 安全策略：不直接搬移或修改 WindowsApps/MSIX 应用包本体，迁移主要针对 Codex 用户数据目录。
+## 快速使用
+
+下载 V5 后运行 `安装_Codex_Doctor_V5.bat`。首次建议先执行“一键诊断”，再按结果修复 `Reconnecting`。
+
+> 修改 `%USERPROFILE%\.codex\.env` 后，需要彻底退出并重新打开 Codex / ChatGPT Desktop。
+
+## 安全原则
+
+工具不会直接搬动 WindowsApps/MSIX 应用包本体；迁移只针对 `%USERPROFILE%\.codex`，并保留备份与恢复路径。
+
+## License
+
+MIT
