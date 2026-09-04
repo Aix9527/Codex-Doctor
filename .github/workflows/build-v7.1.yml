@@ -1,0 +1,41 @@
+name: build-v7.1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'versions/v7/**'
+      - '.github/workflows/build-v7.1.yml'
+
+jobs:
+  build-v7-1:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned ps2exe
+        shell: powershell
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module ps2exe -RequiredVersion 1.0.18 -Scope CurrentUser -Force
+      - name: Build EXE launcher
+        shell: powershell
+        run: |
+          & '.\versions\v7\Build-EXE.ps1' -OutputPath '.\versions\v7\CodexDoctorV7.exe'
+          if (-not (Test-Path '.\versions\v7\CodexDoctorV7.exe')) { throw 'Missing CodexDoctorV7.exe' }
+          $bytes=[IO.File]::ReadAllBytes((Resolve-Path '.\versions\v7\CodexDoctorV7.exe'))
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Output is not a PE executable.' }
+      - name: Package V7.1 portable release
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force '.\dist\Codex-Doctor-V7.1' | Out-Null
+          Copy-Item '.\versions\v7\*' '.\dist\Codex-Doctor-V7.1\' -Recurse -Force
+          Compress-Archive -Path '.\dist\Codex-Doctor-V7.1\*' -DestinationPath '.\dist\Codex-Doctor-V7.1-Windows.zip' -Force
+          $hash=(Get-FileHash '.\dist\Codex-Doctor-V7.1-Windows.zip' -Algorithm SHA256).Hash
+          Set-Content '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' "$hash  Codex-Doctor-V7.1-Windows.zip" -Encoding ASCII
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Doctor-V7.1-Windows
+          path: |
+            dist/Codex-Doctor-V7.1-Windows.zip
+            dist/Codex-Doctor-V7.1-Windows.zip.sha256
+          if-no-files-found: error
