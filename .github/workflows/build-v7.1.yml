@@ -12,13 +12,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install pinned ps2exe
+      - name: Fetch pinned ps2exe package
         shell: powershell
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module ps2exe -RequiredVersion 1.0.18 -Scope CurrentUser -Force -AllowClobber -Confirm:$false
+          $moduleRoot = Join-Path $PWD '.ci\modules\ps2exe\1.0.18'
+          New-Item -ItemType Directory -Force -Path $moduleRoot | Out-Null
+          $pkg = Join-Path $env:TEMP 'ps2exe.1.0.18.zip'
+          Invoke-WebRequest 'https://www.powershellgallery.com/api/v2/package/ps2exe/1.0.18' -OutFile $pkg -UseBasicParsing
+          Expand-Archive -Path $pkg -DestinationPath $moduleRoot -Force
+          $env:PSModulePath = (Join-Path $PWD '.ci\modules') + ';' + $env:PSModulePath
+          "PSModulePath=$env:PSModulePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Import-Module ps2exe -RequiredVersion 1.0.18 -Force
+          if (-not (Get-Command Invoke-ps2exe -ErrorAction SilentlyContinue)) { throw 'Invoke-ps2exe not available.' }
       - name: Build EXE launcher
         shell: powershell
         run: |
