@@ -15,8 +15,10 @@ jobs:
       - name: Install pinned ps2exe
         shell: powershell
         run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module ps2exe -RequiredVersion 1.0.18 -Scope CurrentUser -Force
+          Install-Module ps2exe -RequiredVersion 1.0.18 -Scope CurrentUser -Force -AllowClobber -Confirm:$false
       - name: Build EXE launcher
         shell: powershell
         run: |
