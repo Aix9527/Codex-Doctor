@@ -1,5 +1,15 @@
 # Changelog
 
+## V6
+- DNS resolution checks for `chatgpt.com` and `api.openai.com`
+- TLS handshake diagnosis for `chatgpt.com:443`
+- Explicit HTTP proxy route validation
+- Clash/Mihomo/sing-box process and TUN adapter detection
+- Git global proxy mismatch detection
+- npm proxy mismatch detection
+- Deterministic failure classes: `DNS`, `TLS`, `PROXY`, `ENV_CONFLICT`, `HEALTHY`
+- Read-only diagnosis mode with JSON output for automation
+
 ## V5
 - Installer Edition
 - GUI health indicator
