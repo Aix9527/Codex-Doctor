@@ -112,7 +112,8 @@ function Get-NpmProxyState {
         $null=Get-Command npm -ErrorAction Stop
         $proxy=(& npm config get proxy 2>$null | Select-Object -First 1)
         $httpsProxy=(& npm config get https-proxy 2>$null | Select-Object -First 1)
-        if($proxy -eq 'null'){$proxy=''}; if($httpsProxy -eq 'null'){$httpsProxy=''}
+        if($proxy -eq 'null'){$proxy=''}
+        if($httpsProxy -eq 'null'){$httpsProxy=''}
     } catch {}
     $vals=@($proxy,$httpsProxy)|Where-Object{$_}
     $conflict=$false
@@ -132,6 +133,14 @@ function Invoke-CodexNetworkDiagnosis {
     $npm=Get-NpmProxyState -ExpectedProxy $ProxyUrl
     $class=Get-CodexFailureClass -DnsOk:$dns.Ok -TlsOk:$tls.Ok -ProxyOk:$proxy.Ok -TunDetected:$tun.TunDetected -GitConflict:$git.Conflict -NpmConflict:$npm.Conflict
 
+    $recommendation = switch($class){
+        'DNS' {'Fix DNS resolution before changing Codex proxy settings.'}
+        'TLS' {'Check TLS interception, antivirus HTTPS inspection, clock, and certificate chain.'}
+        'PROXY' {'Local proxy is missing, stale, or cannot reach ChatGPT/OpenAI.'}
+        'ENV_CONFLICT' {'Align or clear stale Git/npm proxy settings that disagree with the Codex proxy.'}
+        default {'Connectivity checks passed.'}
+    }
+
     [pscustomobject]@{
         Class=$class
         Dns=$dns
@@ -140,13 +149,7 @@ function Invoke-CodexNetworkDiagnosis {
         Tun=$tun
         Git=$git
         Npm=$npm
-        Recommendation=(switch($class){
-            'DNS' {'Fix DNS resolution before changing Codex proxy settings.'}
-            'TLS' {'Check TLS interception, antivirus HTTPS inspection, clock, and certificate chain.'}
-            'PROXY' {'Local proxy is missing, stale, or cannot reach ChatGPT/OpenAI.'}
-            'ENV_CONFLICT' {'Align or clear stale Git/npm proxy settings that disagree with the Codex proxy.'}
-            default {'Connectivity checks passed.'}
-        })
+        Recommendation=$recommendation
     }
 }
 
