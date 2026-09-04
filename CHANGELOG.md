@@ -1,5 +1,16 @@
 # Changelog
 
+## V7
+- Unified WinForms GUI combining V5 repair/migration and V6 diagnosis
+- RepairPlan decision engine separates diagnosis from mutation
+- Health model with `Healthy`, `Warning`, and `Error`
+- Confirmed `.codex/.env` proxy repair with backup preservation
+- Optional Windows user proxy environment write (default off)
+- Explicit Git/npm proxy cleanup actions
+- `.codex` migration/restore with Junction safety checks
+- CLI diagnosis mode with JSON output
+- Windows CI runs V6 and V7 tests and validates `.ps1`/`.psm1`
+
 ## V6
 - DNS resolution checks for `chatgpt.com` and `api.openai.com`
 - TLS handshake diagnosis for `chatgpt.com:443`
