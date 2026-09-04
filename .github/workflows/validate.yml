@@ -1,0 +1,40 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = @()
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count -gt 0) {
+              $errors += $parseErrors | ForEach-Object { "$($_.Extent.File):$($_.Extent.StartLineNumber): $($_.Message)" }
+            }
+          }
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+      - name: Verify release packages exist
+        shell: pwsh
+        run: |
+          $required = @(
+            'releases/Codex-Doctor-V1.zip',
+            'releases/Codex-Doctor-V2.zip',
+            'releases/Codex-Doctor-V3.zip',
+            'releases/Codex-Doctor-V4-GUI.zip',
+            'releases/Codex-Doctor-V5-Installer.zip'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) { throw "Missing required package: $file" }
+          }

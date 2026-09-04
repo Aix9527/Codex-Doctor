@@ -1,0 +1,19 @@
+# Windows
+Thumbs.db
+Desktop.ini
+
+# PowerShell / local diagnostics
+*.log
+*.backup_*
+*.pre-migrate-*
+reports/
+logs/
+state.json
+
+# Build outputs
+releases-build/
+CodexDoctorV*.exe
+
+# Editors
+.vscode/
+.idea/
