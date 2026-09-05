@@ -60,7 +60,7 @@ Assert(!reportJson.Contains("\\u7248\\u672c", StringComparison.OrdinalIgnoreCase
 Assert(!reportJson.Contains("\"FailureClass\""), "报告不应暴露英文 FailureClass 字段。");
 Assert(!reportJson.Contains("\"Health\""), "报告不应暴露英文 Health 字段。");
 
-// Task 1 RED：本机发现模型必须使用中文 JSON 字段，并保证敏感值永不进入序列化输出。
+// Task 1：本机发现模型必须使用中文 JSON 字段，并保证敏感值永不进入序列化输出。
 var sensitiveEntry = new CodexConfigEntryInfo("OPENAI_API_KEY", null, true, true);
 var discoverySample = new CodexDiscoveryResult(
     [new CodexDesktopInstallationInfo("Codex Desktop", "进程发现", @"C:\\Apps\\Codex.exe", "1.0.0", true, [1234])],
@@ -74,6 +74,36 @@ foreach (var field in new[] { "桌面客户端", "CodexCLI", "数据目录", "�
 Assert(discoveryJson.Contains("\"已配置\":true"), "敏感配置必须只标记为已配置。");
 Assert(!discoveryJson.Contains("sk-test-secret", StringComparison.OrdinalIgnoreCase), "敏感配置值不得进入发现报告。");
 Assert(!discoveryJson.Contains("OPENAI_API_KEY=", StringComparison.OrdinalIgnoreCase), "发现报告不得输出敏感键值对原文。");
+
+// Task 2 RED：Desktop、CLI 与配置文件必须可通过可测试 helper 自动发现并安全脱敏。
+var discoveryTemp = Path.Combine(Path.GetTempPath(), "CodexDoctorDiscoveryTests-" + Guid.NewGuid().ToString("N"));
+var desktopDir = Path.Combine(discoveryTemp, "Programs", "Codex");
+var npmDir = Path.Combine(discoveryTemp, "AppData", "Roaming", "npm");
+var codexDir = Path.Combine(discoveryTemp, ".codex");
+Directory.CreateDirectory(desktopDir);
+Directory.CreateDirectory(npmDir);
+Directory.CreateDirectory(codexDir);
+var fakeDesktop = Path.Combine(desktopDir, "Codex.exe");
+var fakeCli = Path.Combine(npmDir, "codex.cmd");
+var fakeEnv = Path.Combine(codexDir, ".env");
+File.WriteAllBytes(fakeDesktop, [0x4D, 0x5A]);
+File.WriteAllText(fakeCli, "@echo off\r\necho codex-test\r\n");
+File.WriteAllText(fakeEnv, "HTTP_PROXY=http://127.0.0.1:7897\nOPENAI_API_KEY=sk-super-secret\n");
+var desktopCandidates = CodexDiscoveryService.DiscoverDesktopCandidates([desktopDir]);
+Assert(desktopCandidates.Any(x => string.Equals(x.ExecutablePath, fakeDesktop, StringComparison.OrdinalIgnoreCase)), "应从候选目录找到 Codex Desktop。");
+var cliFromPath = CodexDiscoveryService.DiscoverCliFromPath(npmDir);
+Assert(cliFromPath.Found && string.Equals(cliFromPath.Path, fakeCli, StringComparison.OrdinalIgnoreCase), "应从模拟 PATH 找到 Codex CLI。");
+Assert(cliFromPath.PathCallable, "PATH 内 CLI 应标记为可调用。");
+var cliOutsidePath = CodexDiscoveryService.DiscoverCliFromPath("", [fakeCli]);
+Assert(cliOutsidePath.Found && !cliOutsidePath.PathCallable, "非 PATH 候选 CLI 应被发现但标记为不可直接调用。");
+var scannedEnv = CodexDiscoveryService.ScanConfigFile(fakeEnv);
+var proxyEntry = scannedEnv.Entries.FirstOrDefault(x => x.Name.Equals("HTTP_PROXY", StringComparison.OrdinalIgnoreCase));
+var apiKeyEntry = scannedEnv.Entries.FirstOrDefault(x => x.Name.Equals("OPENAI_API_KEY", StringComparison.OrdinalIgnoreCase));
+Assert(proxyEntry is not null && proxyEntry.Value == "http://127.0.0.1:7897", "代理配置应允许在扫描结果中显示。");
+Assert(apiKeyEntry is not null && apiKeyEntry.Sensitive && apiKeyEntry.Configured && apiKeyEntry.Value is null, "API key 必须只显示已配置状态并隐藏值。");
+var scannedJson = JsonSerializer.Serialize(scannedEnv, reportOptions);
+Assert(!scannedJson.Contains("sk-super-secret", StringComparison.OrdinalIgnoreCase), "扫描报告不得包含 API key 原值。");
+Directory.Delete(discoveryTemp, true);
 
 // 全中文 GUI 文案合同。
 var sourceRoot = Directory.GetParent(AppContext.BaseDirectory)!;
