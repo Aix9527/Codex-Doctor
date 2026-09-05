@@ -1,4 +1,5 @@
 using CodexDoctor.Native;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 static void Assert(bool condition, string message)
@@ -35,7 +36,7 @@ Assert(text.Contains("HTTP_PROXY=http://127.0.0.1:7897"), "必须写入新 HTTP_
 Assert(!text.Contains("127.0.0.1:1111"), "旧代理必须被移除。");
 Directory.Delete(temp, true);
 
-// 导出报告的用户可见字段必须为中文，不暴露英文模型属性名。
+// 导出报告必须直接显示中文字段，而不是 \uXXXX 转义，也不能暴露英文模型字段。
 var reportSample = new DiagnosisResult(
     "8.0",
     HealthState.Warning,
@@ -51,9 +52,11 @@ var reportSample = new DiagnosisResult(
     new ConflictState("", "", false),
     new TunState(true, false, ["clash-verge"], []),
     2);
-var reportJson = JsonSerializer.Serialize(reportSample);
+var reportOptions = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+var reportJson = JsonSerializer.Serialize(reportSample, reportOptions);
 foreach (var field in new[] { "版本", "健康状态", "故障分类", "诊断建议", "DNS诊断", "直连TLS诊断", "代理HTTPS诊断", "代理地址", "Codex专用环境文件", "Git代理", "npm代理", "TUN状态", "Codex进程数量" })
     Assert(reportJson.Contains($"\"{field}\""), $"报告缺少中文字段：{field}");
+Assert(!reportJson.Contains("\\u7248\\u672c", StringComparison.OrdinalIgnoreCase), "中文报告不应把“版本”转义成 Unicode 序列。");
 Assert(!reportJson.Contains("\"FailureClass\""), "报告不应暴露英文 FailureClass 字段。");
 Assert(!reportJson.Contains("\"Health\""), "报告不应暴露英文 Health 字段。");
 
@@ -62,8 +65,9 @@ var sourceRoot = Directory.GetParent(AppContext.BaseDirectory)!;
 while (sourceRoot is not null && !File.Exists(Path.Combine(sourceRoot.FullName, "CodexDoctor.Native.csproj"))) sourceRoot = sourceRoot.Parent;
 Assert(sourceRoot is not null, "无法定位 V8 源码目录。");
 var mainForm = File.ReadAllText(Path.Combine(sourceRoot!.FullName, "MainForm.cs"));
-foreach (var phrase in new[] { "一键诊断", "修复建议项", "重启 Codex", "迁移 .codex", "恢复 .codex", "导出报告", "诊断失败", "修复失败" })
+foreach (var phrase in new[] { "一键诊断", "修复建议项", "重启 Codex", "迁移 .codex", "恢复 .codex", "导出报告", "诊断失败", "修复失败", "有冲突", "无冲突" })
     Assert(mainForm.Contains(phrase), $"缺少中文 GUI 文案：{phrase}");
+Assert(mainForm.Contains("UnsafeRelaxedJsonEscaping"), "导出报告必须配置直接可读的中文 JSON 编码。");
 
 // 原生运行链合同：C# 运行时代码不得启动 PowerShell 或引用 ps1/psm1 作为依赖。
 var csFiles = Directory.GetFiles(sourceRoot.FullName, "*.cs", SearchOption.TopDirectoryOnly);
