@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item '.\dist\v8-native' -Recurse -Force -ErrorAction SilentlyContinue
-          dotnet publish '.\versions\v8-native\CodexDoctor.Native.csproj' -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o '.\dist\v8-native'
+          dotnet publish '.\versions\v8-native\CodexDoctor.Native.csproj' -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o '.\dist\v8-native'
 
       - name: 验证真正单文件 EXE
         shell: pwsh
