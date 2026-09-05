@@ -10,9 +10,6 @@
     <Version>8.0.0</Version>
     <Product>Codex Doctor 原生版</Product>
     <Description>Codex 网络诊断与安全修复工具</Description>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 </Project>
