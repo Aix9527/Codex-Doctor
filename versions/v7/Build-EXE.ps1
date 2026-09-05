@@ -11,6 +11,6 @@ if(-not $module){
 }
 Import-Module ps2exe -RequiredVersion $requiredVersion -Force
 $src=Join-Path $PSScriptRoot 'Codex-Doctor-V7-Launcher.ps1'
-Invoke-ps2exe -inputFile $src -outputFile $OutputPath -noConsole -STA -title 'Codex Doctor V7.1' -product 'Codex Doctor' -version '7.1.0.0'
+Invoke-ps2exe -inputFile $src -outputFile $OutputPath -noConsole -STA -title 'Codex Doctor V7.1.1' -product 'Codex Doctor' -version '7.1.1.0'
 if(-not(Test-Path $OutputPath)){throw 'EXE build failed: output file was not created.'}
 Write-Host "Generated: $OutputPath" -ForegroundColor Green
