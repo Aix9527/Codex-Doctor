@@ -36,7 +36,7 @@ function Test-CodexTls {
     $client=New-Object System.Net.Sockets.TcpClient
     try {
         $iar=$client.BeginConnect($HostName,$Port,$null,$null)
-        if(-not $iar.AsyncWaitHandle.WaitOne($TimeoutMs)){throw 'TCP connect timeout'}
+        if(-not $iar.AsyncWaitHandle.WaitOne($TimeoutMs)){throw 'TCP 连接超时'}
         $client.EndConnect($iar)
         $ssl=New-Object System.Net.Security.SslStream($client.GetStream(),$false,({$true}))
         try{$ssl.AuthenticateAsClient($HostName);return [pscustomobject]@{Ok=$true;Protocol=$ssl.SslProtocol.ToString();Error=$null}}
@@ -90,11 +90,11 @@ function Get-NpmProxyState {
 function Invoke-CodexNetworkDiagnosis {
     [CmdletBinding()]param([string]$ProxyUrl='')
     $dns=Test-CodexDns
-    $tls=if($dns.Ok){Test-CodexTls}else{[pscustomobject]@{Ok=$false;Protocol=$null;Error='Skipped because DNS failed'}}
-    $proxy=if($ProxyUrl){Test-HttpProxyEndpoint -ProxyUrl $ProxyUrl}else{[pscustomobject]@{Ok=$false;StatusCode=$null;Error='No proxy configured'}}
+    $tls=if($dns.Ok){Test-CodexTls}else{[pscustomobject]@{Ok=$false;Protocol=$null;Error='DNS 失败，已跳过 TLS 检查'}}
+    $proxy=if($ProxyUrl){Test-HttpProxyEndpoint -ProxyUrl $ProxyUrl}else{[pscustomobject]@{Ok=$false;StatusCode=$null;Error='未配置代理'}}
     $tun=Get-ClashTunState;$git=Get-GitProxyState -ExpectedProxy $ProxyUrl;$npm=Get-NpmProxyState -ExpectedProxy $ProxyUrl
     $class=Get-CodexFailureClass -DnsOk:$dns.Ok -TlsOk:$tls.Ok -ProxyOk:$proxy.Ok -TunDetected:$tun.TunDetected -GitConflict:$git.Conflict -NpmConflict:$npm.Conflict
-    $recommendation=switch($class){'DNS'{'Fix DNS resolution before changing Codex proxy settings.'}'TLS'{'Check TLS interception, antivirus HTTPS inspection, clock, and certificate chain.'}'PROXY'{'Local proxy is missing, stale, or cannot reach ChatGPT/OpenAI.'}'ENV_CONFLICT'{'Align or clear stale Git/npm proxy settings that disagree with the Codex proxy.'}default{'Connectivity checks passed.'}}
+    $recommendation=switch($class){'DNS'{'请先修复 DNS 解析，再修改 Codex 代理设置。'}'TLS'{'请检查 TLS/HTTPS 检查、杀毒软件 HTTPS 扫描、系统时间和证书链。'}'PROXY'{'本地代理未启动、配置已失效，或无法访问 ChatGPT/OpenAI。'}'ENV_CONFLICT'{'Git/npm 全局代理与 Codex 代理不一致，请统一或清理冲突配置。'}default{'网络连接检查已通过。'}}
     [pscustomobject]@{Class=$class;Dns=$dns;Tls=$tls;Proxy=$proxy;Tun=$tun;Git=$git;Npm=$npm;Recommendation=$recommendation}
 }
 
