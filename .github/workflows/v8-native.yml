@@ -2,7 +2,7 @@ name: v8-native
 
 on:
   push:
-    branches: ['feature/v8-native-cn', main]
+    branches: ['feature/v8-native-cn', 'feature/v8.0.1-codex-discovery', main]
     paths:
       - 'versions/v8-native/**'
       - '.github/workflows/v8-native.yml'
