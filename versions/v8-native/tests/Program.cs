@@ -38,7 +38,7 @@ Directory.Delete(temp, true);
 
 // 导出报告必须直接显示中文字段，而不是 \\uXXXX 转义，也不能暴露英文模型字段。
 var reportSample = new DiagnosisResult(
-    "8.0",
+    "8.0.1",
     HealthState.Warning,
     FailureClass.ProxyRequired,
     "需要配置代理",
@@ -75,7 +75,7 @@ Assert(discoveryJson.Contains("\"已配置\":true"), "敏感配置必须只标�
 Assert(!discoveryJson.Contains("sk-test-secret", StringComparison.OrdinalIgnoreCase), "敏感配置值不得进入发现报告。");
 Assert(!discoveryJson.Contains("OPENAI_API_KEY=", StringComparison.OrdinalIgnoreCase), "发现报告不得输出敏感键值对原文。");
 
-// Task 2 RED：Desktop、CLI 与配置文件必须可通过可测试 helper 自动发现并安全脱敏。
+// Task 2：Desktop、CLI 与配置文件必须可通过可测试 helper 自动发现并安全脱敏。
 var discoveryTemp = Path.Combine(Path.GetTempPath(), "CodexDoctorDiscoveryTests-" + Guid.NewGuid().ToString("N"));
 var desktopDir = Path.Combine(discoveryTemp, "Programs", "Codex");
 var npmDir = Path.Combine(discoveryTemp, "AppData", "Roaming", "npm");
@@ -105,14 +105,67 @@ var scannedJson = JsonSerializer.Serialize(scannedEnv, reportOptions);
 Assert(!scannedJson.Contains("sk-super-secret", StringComparison.OrdinalIgnoreCase), "扫描报告不得包含 API key 原值。");
 Directory.Delete(discoveryTemp, true);
 
-// 全中文 GUI 文案合同。
+// 源码根目录。
 var sourceRoot = Directory.GetParent(AppContext.BaseDirectory)!;
 while (sourceRoot is not null && !File.Exists(Path.Combine(sourceRoot.FullName, "CodexDoctor.Native.csproj"))) sourceRoot = sourceRoot.Parent;
 Assert(sourceRoot is not null, "无法定位 V8 源码目录。");
-var mainForm = File.ReadAllText(Path.Combine(sourceRoot!.FullName, "MainForm.cs"));
+
+// Task 3：doctor / restart 必须使用扫描到的显式路径，不能裸调用 codex 或 chatgpt:。
+var repairSource = File.ReadAllText(Path.Combine(sourceRoot!.FullName, "RepairService.cs"));
+Assert(repairSource.Contains("RunCodexDoctor(string cliPath)"), "RepairService 必须支持显式 CLI 路径运行 doctor。");
+Assert(repairSource.Contains("RestartCodexDesktop(string executablePath"), "RepairService 必须支持显式 Desktop 路径重启。");
+Assert(!repairSource.Contains("Run(\"codex\", \"doctor\"", StringComparison.OrdinalIgnoreCase), "不得再裸调用 codex doctor。");
+Assert(!repairSource.Contains("ProcessStartInfo(\"chatgpt:\"", StringComparison.OrdinalIgnoreCase), "不得再依赖 chatgpt: URL 协议重启。");
+
+// Task 4 安全 RED：普通 .codex 配置中的 language/locale 不是已知 Desktop UI 语言入口，不能自动改写并宣称成功。
+var languageTemp = Path.Combine(Path.GetTempPath(), "CodexDoctorLanguageSafety-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(Path.Combine(languageTemp, ".codex"));
+var languageConfig = Path.Combine(languageTemp, ".codex", "config.toml");
+File.WriteAllText(languageConfig, "language=en-US\n");
+var untrustedLanguageFile = CodexDiscoveryService.ScanConfigFile(languageConfig);
+var languageDiscovery = new CodexDiscoveryResult(
+    [],
+    new CodexCliInfo(false, null, false, null, false),
+    new CodexDataDirectoryInfo(Path.Combine(languageTemp, ".codex"), true, false, null, 1, new FileInfo(languageConfig).Length),
+    [untrustedLanguageFile],
+    new CodexLanguageState("未知", "未知", "未知", false, true, "尚未检测"));
+var languageBackup = Path.Combine(languageTemp, "language-backup.json");
+var languageService = new CodexLanguageService(languageBackup);
+var unsafeApply = languageService.ApplySimplifiedChinese(languageDiscovery);
+Assert(!unsafeApply.Applied && unsafeApply.NeedsUserAction, "未经明确白名单的 .codex language 配置不得被当作 Desktop UI 语言入口。");
+Assert(File.ReadAllText(languageConfig).Contains("language=en-US"), "不可信语言配置必须保持原样。");
+Assert(!File.Exists(languageBackup), "未执行语言写入时不应生成伪备份。");
+Directory.Delete(languageTemp, true);
+
+// Task 5：GUI 必须包含完整本机扫描/中文设置能力，并复用发现结果。
+var mainForm = File.ReadAllText(Path.Combine(sourceRoot.FullName, "MainForm.cs"));
+var discoveryFormPath = Path.Combine(sourceRoot.FullName, "CodexDiscoveryForm.cs");
+Assert(File.Exists(discoveryFormPath), "必须存在 CodexDiscoveryForm.cs。");
+var discoveryForm = File.ReadAllText(discoveryFormPath);
+foreach (var phrase in new[] { "扫描本机 Codex", "一键设置 Codex 为简体中文", "恢复原语言", "当前界面语言", "回答语言偏好", "CLI 输出偏好", "打开安装目录", "打开 .codex 目录", "复制扫描摘要", "导出扫描报告" })
+    Assert((mainForm + "\n" + discoveryForm).Contains(phrase), $"缺少 V8.0.1 GUI 文案：{phrase}");
+Assert(mainForm.Contains("RunCodexDoctor(_lastDiscovery.Cli.Path"), "主界面 doctor 必须复用扫描到的 CLI 路径。");
+Assert(mainForm.Contains("RestartCodexDesktop(desktop.ExecutablePath, desktop.ProcessIds)"), "主界面重启必须复用扫描到的 Desktop 路径。");
+
+// 全中文 GUI 基础文案合同。
 foreach (var phrase in new[] { "一键诊断", "修复建议项", "重启 Codex", "迁移 .codex", "恢复 .codex", "导出报告", "诊断失败", "修复失败", "有冲突", "无冲突" })
     Assert(mainForm.Contains(phrase), $"缺少中文 GUI 文案：{phrase}");
 Assert(mainForm.Contains("UnsafeRelaxedJsonEscaping"), "导出报告必须配置直接可读的中文 JSON 编码。");
+
+// Task 6：发布文档和工作流合同。
+var repoRoot = sourceRoot.Parent!.Parent!;
+var readme = File.ReadAllText(Path.Combine(sourceRoot.FullName, "README.md"));
+var releaseNotesPath = Path.Combine(repoRoot.FullName, "RELEASE_NOTES_V8.0.1.md");
+var releaseWorkflowPath = Path.Combine(repoRoot.FullName, ".github", "workflows", "release-v8.0.1.yml");
+Assert(File.Exists(releaseNotesPath), "必须存在 V8.0.1 发布说明。");
+Assert(File.Exists(releaseWorkflowPath), "必须存在 V8.0.1 发布工作流。");
+var releaseNotes = File.ReadAllText(releaseNotesPath);
+foreach (var phrase in new[] { "只读", "敏感", "Desktop", "CLI", "MSIX" })
+    Assert((readme + "\n" + releaseNotes).Contains(phrase, StringComparison.OrdinalIgnoreCase), $"V8.0.1 文档缺少安全/客户端边界说明：{phrase}");
+var releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
+Assert(releaseWorkflow.Contains("v8.0.1"), "发布工作流必须绑定 v8.0.1。");
+Assert(releaseWorkflow.Contains("PublishSingleFile=true"), "发布工作流必须保持单文件发布。");
+Assert(releaseWorkflow.Contains("IncludeNativeLibrariesForSelfExtract=true"), "发布工作流必须打包原生库。");
 
 // 原生运行链合同：C# 运行时代码不得启动 PowerShell 或引用 ps1/psm1 作为依赖。
 var csFiles = Directory.GetFiles(sourceRoot.FullName, "*.cs", SearchOption.TopDirectoryOnly);
