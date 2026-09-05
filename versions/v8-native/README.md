@@ -71,7 +71,7 @@ dotnet publish .\versions\v8-native\CodexDoctor.Native.csproj `
   -p:DebugSymbols=false
 ```
 
-V8.0.0 的旧发布工作流已固定为仅手动触发，避免 V8.0.1 合并后覆盖历史 Release 资产。V8.0.1 使用独立 Release 流程。
+V8.0.0 的旧发布工作流已固定为仅手动触发，避免 V8.0.1 合并后覆盖历史 Release 资产。V8.0.1 使用独立 Release 流程。已存在的 V8.0.0 / V8.0.1 Release 均禁止覆盖资产；工作流检测到既有 Release 时会直接跳过发布。
 
 正式发布目标继续保持：
 
