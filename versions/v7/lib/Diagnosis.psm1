@@ -73,7 +73,7 @@ function Get-GitProxyState {
     $http='';$https=''
     try{$http=(& git config --global --get http.proxy 2>$null|Select-Object -First 1)}catch{}
     try{$https=(& git config --global --get https.proxy 2>$null|Select-Object -First 1)}catch{}
-    $vals=@($http,$https)|Where-Object{$_};$conflict=$false
+    $vals=@(@($http,$https)|Where-Object{$_});$conflict=$false
     if($vals.Count -gt 0 -and $ExpectedProxy){$conflict=@($vals|Where-Object{$_ -ne $ExpectedProxy}).Count -gt 0}
     [pscustomobject]@{Http=$http;Https=$https;Conflict=$conflict}
 }
@@ -82,7 +82,7 @@ function Get-NpmProxyState {
     [CmdletBinding()]param([string]$ExpectedProxy='')
     $proxy='';$httpsProxy=''
     try{$null=Get-Command npm -ErrorAction Stop;$proxy=(& npm config get proxy 2>$null|Select-Object -First 1);$httpsProxy=(& npm config get https-proxy 2>$null|Select-Object -First 1);if($proxy -eq 'null'){$proxy=''};if($httpsProxy -eq 'null'){$httpsProxy=''}}catch{}
-    $vals=@($proxy,$httpsProxy)|Where-Object{$_};$conflict=$false
+    $vals=@(@($proxy,$httpsProxy)|Where-Object{$_});$conflict=$false
     if($vals.Count -gt 0 -and $ExpectedProxy){$conflict=@($vals|Where-Object{$_ -ne $ExpectedProxy}).Count -gt 0}
     [pscustomobject]@{Proxy=$proxy;HttpsProxy=$httpsProxy;Conflict=$conflict}
 }
