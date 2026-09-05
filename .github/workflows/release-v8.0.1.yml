@@ -63,7 +63,7 @@ jobs:
           gh release view v8.0.1 --repo "$env:GITHUB_REPOSITORY" *> $null
           $exists = ($LASTEXITCODE -eq 0)
           if ($exists) {
-            gh release upload v8.0.1 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --clobber --repo "$env:GITHUB_REPOSITORY"
-          } else {
-            gh release create v8.0.1 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.0.1 Native 中文增强版' --notes-file '.\RELEASE_NOTES_V8.0.1.md' --repo "$env:GITHUB_REPOSITORY"
+            Write-Host 'Release 已存在，跳过发布：v8.0.1'
+            exit 0
           }
+          gh release create v8.0.1 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.0.1 Native 中文增强版' --notes-file '.\RELEASE_NOTES_V8.0.1.md' --repo "$env:GITHUB_REPOSITORY"
