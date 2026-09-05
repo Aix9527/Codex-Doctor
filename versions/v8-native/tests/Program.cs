@@ -36,7 +36,7 @@ Assert(text.Contains("HTTP_PROXY=http://127.0.0.1:7897"), "必须写入新 HTTP_
 Assert(!text.Contains("127.0.0.1:1111"), "旧代理必须被移除。");
 Directory.Delete(temp, true);
 
-// 导出报告必须直接显示中文字段，而不是 \uXXXX 转义，也不能暴露英文模型字段。
+// 导出报告必须直接显示中文字段，而不是 \\uXXXX 转义，也不能暴露英文模型字段。
 var reportSample = new DiagnosisResult(
     "8.0",
     HealthState.Warning,
@@ -59,6 +59,21 @@ foreach (var field in new[] { "版本", "健康状态", "故障分类", "诊断�
 Assert(!reportJson.Contains("\\u7248\\u672c", StringComparison.OrdinalIgnoreCase), "中文报告不应把“版本”转义成 Unicode 序列。");
 Assert(!reportJson.Contains("\"FailureClass\""), "报告不应暴露英文 FailureClass 字段。");
 Assert(!reportJson.Contains("\"Health\""), "报告不应暴露英文 Health 字段。");
+
+// Task 1 RED：本机发现模型必须使用中文 JSON 字段，并保证敏感值永不进入序列化输出。
+var sensitiveEntry = new CodexConfigEntryInfo("OPENAI_API_KEY", null, true, true);
+var discoverySample = new CodexDiscoveryResult(
+    [new CodexDesktopInstallationInfo("Codex Desktop", "进程发现", @"C:\\Apps\\Codex.exe", "1.0.0", true, [1234])],
+    new CodexCliInfo(true, @"C:\\Users\\X\\AppData\\Roaming\\npm\\codex.cmd", true, "codex 1.0.0", true),
+    new CodexDataDirectoryInfo(@"C:\\Users\\X\\.codex", true, false, null, 3, 1024),
+    [new CodexConfigFileInfo(@"C:\\Users\\X\\.codex\\.env", true, [sensitiveEntry])],
+    new CodexLanguageState("未知", "简体中文", "简体中文", false, true, "需要用户操作"));
+var discoveryJson = JsonSerializer.Serialize(discoverySample, reportOptions);
+foreach (var field in new[] { "桌面客户端", "CodexCLI", "数据目录", "配置文件", "语言状态" })
+    Assert(discoveryJson.Contains($"\"{field}\""), $"发现报告缺少中文字段：{field}");
+Assert(discoveryJson.Contains("\"已配置\":true"), "敏感配置必须只标记为已配置。");
+Assert(!discoveryJson.Contains("sk-test-secret", StringComparison.OrdinalIgnoreCase), "敏感配置值不得进入发现报告。");
+Assert(!discoveryJson.Contains("OPENAI_API_KEY=", StringComparison.OrdinalIgnoreCase), "发现报告不得输出敏感键值对原文。");
 
 // 全中文 GUI 文案合同。
 var sourceRoot = Directory.GetParent(AppContext.BaseDirectory)!;
