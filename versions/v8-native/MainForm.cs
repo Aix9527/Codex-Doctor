@@ -9,6 +9,8 @@ public sealed class MainForm : Form
     private readonly DiagnosisService _diagnosis = new();
     private readonly RepairService _repair = new();
     private readonly MigrationService _migration = new();
+    private readonly CodexDiscoveryService _discovery = new();
+    private readonly CodexLanguageService _language = new();
     private readonly Label _health = new();
     private readonly Label _detail = new();
     private readonly TextBox _proxy = new();
@@ -16,19 +18,20 @@ public sealed class MainForm : Form
     private readonly TextBox _target = new();
     private readonly TextBox _log = new();
     private DiagnosisResult? _last;
+    private CodexDiscoveryResult? _lastDiscovery;
 
     public MainForm()
     {
-        Text = "Codex Doctor V8 原生中文版";
+        Text = "Codex Doctor V8.0.1 原生中文版";
         Width = 1040;
-        Height = 800;
-        MinimumSize = new Size(960, 720);
+        Height = 850;
+        MinimumSize = new Size(960, 760);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Microsoft YaHei UI", 9F);
 
         var title = new Label
         {
-            Text = "Codex Doctor V8 原生版",
+            Text = "Codex Doctor V8.0.1 原生版",
             Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
             Location = new Point(28, 18),
             Size = new Size(650, 46)
@@ -37,7 +40,7 @@ public sealed class MainForm : Form
 
         var subtitle = new Label
         {
-            Text = "统一诊断 · 安全修复 · .codex 迁移/恢复 · 无 PowerShell 运行依赖",
+            Text = "统一诊断 · 本机 Codex 扫描 · 安全修复 · 中文设置 · .codex 迁移/恢复",
             Location = new Point(32, 68),
             Size = new Size(850, 26)
         };
@@ -81,25 +84,29 @@ public sealed class MainForm : Form
         var doctor = AddButton("运行 codex doctor", 32, 372, 175);
         var clearGit = AddButton("清理 Git 代理", 222, 372, 150);
         var clearNpm = AddButton("清理 npm 代理", 387, 372, 150);
+        var scanCodex = AddButton("扫描本机 Codex", 552, 372, 170);
+        var chinese = AddButton("一键设置 Codex 为简体中文", 737, 372, 245);
 
         _log.Multiline = true;
         _log.ReadOnly = true;
         _log.ScrollBars = ScrollBars.Vertical;
         _log.Font = new Font("Consolas", 9F);
         _log.Location = new Point(32, 435);
-        _log.Size = new Size(950, 280);
+        _log.Size = new Size(950, 330);
         _log.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         Controls.Add(_log);
 
         diagnose.Click += async (_, _) => await DiagnoseAsync();
         repair.Click += async (_, _) => await RepairAsync();
-        restart.Click += (_, _) => RestartCodex();
+        restart.Click += async (_, _) => await RestartCodexAsync();
         migrate.Click += (_, _) => Migrate();
         restore.Click += (_, _) => Restore();
         report.Click += (_, _) => ExportReport();
-        doctor.Click += (_, _) => RunDoctor();
+        doctor.Click += async (_, _) => await RunDoctorAsync();
         clearGit.Click += (_, _) => ClearGit();
         clearNpm.Click += (_, _) => ClearNpm();
+        scanCodex.Click += async (_, _) => await ScanCodexAsync(true);
+        chinese.Click += async (_, _) => await SetChineseAsync();
     }
 
     private Button AddButton(string text, int x, int y, int width)
@@ -166,13 +173,88 @@ public sealed class MainForm : Form
         }
     }
 
-    private void RestartCodex()
+    private async Task<CodexDiscoveryResult?> EnsureDiscoveryAsync()
     {
-        if (MessageBox.Show("将关闭正在运行的 Codex/ChatGPT 进程并尝试重新启动。是否继续？", "确认重启", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+        if (_lastDiscovery is not null) return _lastDiscovery;
         try
         {
-            _repair.RestartCodexDesktop();
-            WriteLog("已请求重启 Codex/ChatGPT。 ");
+            WriteLog("正在扫描本机 Codex……");
+            var scanned = await _discovery.ScanAsync();
+            _lastDiscovery = scanned with { LanguageState = _language.Detect(scanned) };
+            WriteLog($"本机 Codex 扫描完成：Desktop={_lastDiscovery.DesktopClients.Count}，CLI={(_lastDiscovery.Cli.Found ? "已发现" : "未发现")}。");
+            return _lastDiscovery;
+        }
+        catch (Exception ex)
+        {
+            WriteLog("本机 Codex 扫描失败：" + ex.Message);
+            MessageBox.Show(ex.Message, "扫描失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return null;
+        }
+    }
+
+    private async Task ScanCodexAsync(bool showWindow)
+    {
+        SetBusy(true);
+        try
+        {
+            var scanned = await _discovery.ScanAsync();
+            _lastDiscovery = scanned with { LanguageState = _language.Detect(scanned) };
+            WriteLog($"本机 Codex 扫描完成：Desktop={_lastDiscovery.DesktopClients.Count}，CLI={(_lastDiscovery.Cli.Found ? "已发现" : "未发现")}，.codex={(_lastDiscovery.DataDirectory.Exists ? "存在" : "不存在")}。");
+            if (showWindow)
+            {
+                using var form = new CodexDiscoveryForm(_lastDiscovery, _discovery, _language);
+                form.ShowDialog(this);
+                _lastDiscovery = form.CurrentResult;
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteLog("本机 Codex 扫描失败：" + ex.Message);
+            MessageBox.Show(ex.Message, "扫描失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        finally { SetBusy(false); }
+    }
+
+    private async Task SetChineseAsync()
+    {
+        var discovery = await EnsureDiscoveryAsync();
+        if (discovery is null) return;
+        var before = _language.Detect(discovery);
+        var text = $"当前界面语言：{before.UiLanguage}\n回答语言偏好：{before.ResponseLanguagePreference}\nCLI 输出偏好：{before.CliLanguagePreference}\n\n将尝试用可逆、安全的本地配置把 Codex 设置为简体中文。是否继续？";
+        if (MessageBox.Show(text, "一键设置 Codex 为简体中文", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+
+        try
+        {
+            var state = _language.ApplySimplifiedChinese(discovery);
+            _lastDiscovery = discovery with { LanguageState = state };
+            WriteLog("中文设置：" + state.MethodZh);
+            if (state.Applied)
+                MessageBox.Show("简体中文设置已写入并已创建恢复信息。建议点击“重启 Codex”使客户端重新加载。", "中文设置完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else
+                MessageBox.Show(state.MethodZh + "\n\n程序没有修改未知内部数据库或安装资源。可点击“扫描本机 Codex”后使用“打开 Codex 设置”进入客户端设置。", "需要用户操作", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            WriteLog("中文设置失败：" + ex.Message);
+            MessageBox.Show(ex.Message, "中文设置失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    private async Task RestartCodexAsync()
+    {
+        var discovery = await EnsureDiscoveryAsync();
+        if (discovery is null) return;
+        var desktop = discovery.DesktopClients.OrderByDescending(x => x.IsRunning).ThenByDescending(x => x.ProcessIds.Count).FirstOrDefault();
+        if (desktop is null)
+        {
+            MessageBox.Show("未检测到 Codex/ChatGPT Desktop。请先使用“扫描本机 Codex”检查安装位置。", "无法重启", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+        if (MessageBox.Show($"将重启：\n{desktop.ExecutablePath}\n\n是否继续？", "确认重启 Codex", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+        try
+        {
+            _repair.RestartCodexDesktop(desktop.ExecutablePath, desktop.ProcessIds);
+            WriteLog("已通过扫描到的真实路径重启 Codex/ChatGPT Desktop。");
         }
         catch (Exception ex)
         {
@@ -191,6 +273,7 @@ public sealed class MainForm : Form
             var state = _migration.Migrate(target);
             WriteLog($"迁移完成：{state.Source} → {state.Target}");
             MessageBox.Show(".codex 迁移完成。", "迁移完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            _lastDiscovery = null;
         }
         catch (Exception ex)
         {
@@ -207,6 +290,7 @@ public sealed class MainForm : Form
             _migration.Restore();
             WriteLog(".codex 已恢复。 ");
             MessageBox.Show(".codex 已恢复。", "恢复完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            _lastDiscovery = null;
         }
         catch (Exception ex)
         {
@@ -242,18 +326,25 @@ public sealed class MainForm : Form
         }
     }
 
-    private void RunDoctor()
+    private async Task RunDoctorAsync()
     {
+        var discovery = await EnsureDiscoveryAsync();
+        if (discovery is null) return;
+        if (!discovery.Cli.Found || string.IsNullOrWhiteSpace(discovery.Cli.Path))
+        {
+            MessageBox.Show("已完成本机扫描，但未检测到 Codex CLI。Codex Desktop 与 Codex CLI 是独立组件；此项可跳过，不影响网络诊断与代理修复。", "未检测到 Codex CLI", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
         try
         {
-            WriteLog("正在运行 codex doctor……");
-            var output = _repair.RunCodexDoctor();
+            WriteLog("正在通过扫描到的 CLI 路径运行 codex doctor……");
+            var output = _repair.RunCodexDoctor(_lastDiscovery.Cli.Path!);
             WriteLog(string.IsNullOrWhiteSpace(output) ? "codex doctor 已执行，但没有返回文本。" : output);
         }
         catch (Exception ex)
         {
             WriteLog("运行 codex doctor 失败：" + ex.Message);
-            MessageBox.Show("无法运行 codex doctor。请确认 Codex CLI 已安装并可从 PATH 调用。\n\n" + ex.Message, "运行失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(ex.Message, "运行 codex doctor 失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
