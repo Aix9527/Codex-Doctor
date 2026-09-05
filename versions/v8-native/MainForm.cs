@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace CodexDoctor.Native;
@@ -226,7 +227,12 @@ public sealed class MainForm : Form
             var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexDoctorV8", "reports");
             Directory.CreateDirectory(root);
             var file = Path.Combine(root, $"CodexDoctorV8-{DateTime.Now:yyyyMMdd-HHmmss}.json");
-            File.WriteAllText(file, JsonSerializer.Serialize(_last, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            File.WriteAllText(file, JsonSerializer.Serialize(_last, options), new UTF8Encoding(false));
             WriteLog("报告已导出：" + file);
             MessageBox.Show(file, "报告已导出", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -276,7 +282,7 @@ public sealed class MainForm : Form
         };
         _detail.Text =
             $"DNS={BoolZh(result.Dns.Ok)}    直连TLS={BoolZh(result.DirectTls.Ok)}    代理HTTPS={BoolZh(result.Proxy.Ok)}    TUN={BoolZh(result.Tun.AdapterDetected)}\n" +
-            $"Git冲突={BoolZh(result.Git.Conflict)}    npm冲突={BoolZh(result.Npm.Conflict)}    .env={BoolZh(result.Env.Exists)}    代理={Display(result.ProxyUrl)}\n" +
+            $"Git冲突={ConflictZh(result.Git.Conflict)}    npm冲突={ConflictZh(result.Npm.Conflict)}    .env={BoolZh(result.Env.Exists)}    代理={Display(result.ProxyUrl)}\n" +
             $"建议：{result.RecommendationZh}";
     }
 
@@ -296,6 +302,7 @@ public sealed class MainForm : Form
     };
 
     private static string BoolZh(bool value) => value ? "正常" : "异常";
+    private static string ConflictZh(bool conflict) => conflict ? "有冲突" : "无冲突";
     private static string Display(string value) => string.IsNullOrWhiteSpace(value) ? "未设置" : value;
 
     private void SetBusy(bool busy)
