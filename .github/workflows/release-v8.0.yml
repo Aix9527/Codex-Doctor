@@ -1,0 +1,69 @@
+name: release-v8.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'versions/v8-native/**'
+      - 'RELEASE_NOTES_V8.0.md'
+      - '.github/workflows/release-v8.0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 运行 V8 原生回归测试
+        shell: pwsh
+        run: dotnet run --project '.\versions\v8-native\tests\CodexDoctor.Native.Tests.csproj' -c Release
+
+      - name: 发布 V8 原生单文件 EXE
+        shell: pwsh
+        run: |
+          Remove-Item '.\dist\v8-native' -Recurse -Force -ErrorAction SilentlyContinue
+          dotnet publish '.\versions\v8-native\CodexDoctor.Native.csproj' -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o '.\dist\v8-native'
+
+      - name: 验证真正单文件 EXE
+        shell: pwsh
+        run: |
+          $exe = '.\dist\v8-native\CodexDoctor.exe'
+          if (-not (Test-Path $exe)) { throw '未生成 CodexDoctor.exe。' }
+          $bytes = [IO.File]::ReadAllBytes((Resolve-Path $exe))
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw '输出不是有效 PE EXE。' }
+          $forbidden = Get-ChildItem '.\dist\v8-native' -Recurse -File | Where-Object { $_.Extension -in '.ps1','.psm1','.dll','.runtimeconfig.json','.deps.json' }
+          if ($forbidden) { $forbidden | ForEach-Object { Write-Error $_.FullName }; throw '发布目录存在外置运行依赖。' }
+          $source = Get-ChildItem '.\versions\v8-native' -Filter '*.cs' -File | Get-Content -Raw
+          $joined = $source -join "`n"
+          foreach ($token in @('powershell.exe','pwsh.exe','.ps1','.psm1')) {
+            if ($joined -match [regex]::Escape($token)) { throw "原生运行时代码包含禁止依赖：$token" }
+          }
+
+      - name: 生成 SHA256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash '.\dist\v8-native\CodexDoctor.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content '.\dist\v8-native\CodexDoctor.exe.sha256' "$hash  CodexDoctor.exe" -Encoding ASCII
+          Write-Host "SHA256=$hash"
+
+      - name: 创建 GitHub Release v8.0.0
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v8.0.0 --repo "$env:GITHUB_REPOSITORY" *> $null
+          $exists = ($LASTEXITCODE -eq 0)
+          if ($exists) {
+            gh release upload v8.0.0 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --clobber --repo "$env:GITHUB_REPOSITORY"
+          } else {
+            gh release create v8.0.0 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.0 Native 中文原生版' --notes-file '.\RELEASE_NOTES_V8.0.md' --repo "$env:GITHUB_REPOSITORY"
+          }
