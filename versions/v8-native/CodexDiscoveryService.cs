@@ -262,8 +262,9 @@ public sealed class CodexDiscoveryService
         catch { return null; }
     }
 
-    private static IEnumerable<string> DiscoverRunningDesktopPaths()
+    private static IReadOnlyList<string> DiscoverRunningDesktopPaths()
     {
+        var result = new List<string>();
         foreach (var process in Process.GetProcesses())
         {
             try
@@ -271,14 +272,15 @@ public sealed class CodexDiscoveryService
                 if (!process.ProcessName.Contains("Codex", StringComparison.OrdinalIgnoreCase) &&
                     !process.ProcessName.Contains("ChatGPT", StringComparison.OrdinalIgnoreCase)) continue;
                 var path = process.MainModule?.FileName;
-                if (!string.IsNullOrWhiteSpace(path)) yield return path;
+                if (!string.IsNullOrWhiteSpace(path)) result.Add(path);
             }
             catch { }
             finally { process.Dispose(); }
         }
+        return result;
     }
 
-    private static IEnumerable<string> DiscoverAppPathRegistry()
+    private static IReadOnlyList<string> DiscoverAppPathRegistry()
     {
         var result = new List<string>();
         foreach (var hive in new[] { Registry.CurrentUser, Registry.LocalMachine })
