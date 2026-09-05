@@ -16,13 +16,24 @@ public sealed class CodexLanguageService
     };
 
     private readonly string _backupFile;
+    private readonly HashSet<string> _approvedUiConfigPaths;
 
-    public CodexLanguageService(string? backupFile = null)
+    public CodexLanguageService(string? backupFile = null, IEnumerable<string>? approvedUiConfigPaths = null)
     {
         _backupFile = backupFile ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "CodexDoctorV8",
             "language-backup.json");
+
+        _approvedUiConfigPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (approvedUiConfigPaths is not null)
+        {
+            foreach (var path in approvedUiConfigPaths.Where(x => !string.IsNullOrWhiteSpace(x)))
+            {
+                try { _approvedUiConfigPaths.Add(Path.GetFullPath(path)); }
+                catch { }
+            }
+        }
     }
 
     public CodexLanguageState Detect(CodexDiscoveryResult discovery)
@@ -36,7 +47,7 @@ public sealed class CodexLanguageService
                 "未知",
                 false,
                 true,
-                "当前客户端未提供稳定可写语言配置，请在应用设置中手动选择简体中文");
+                "当前客户端没有已验证的本地界面语言适配器，请在应用内“设置 → 通用 → 语言”选择简体中文");
         }
 
         var (_, entry) = candidate.Value;
@@ -47,7 +58,7 @@ public sealed class CodexLanguageService
             ui.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "简体中文" : "未知",
             ui.Equals("zh-CN", StringComparison.OrdinalIgnoreCase),
             false,
-            "已识别可逆文本语言配置");
+            "已识别经过明确批准的可逆文本语言配置");
     }
 
     public CodexLanguageState ApplySimplifiedChinese(CodexDiscoveryResult discovery)
@@ -61,7 +72,7 @@ public sealed class CodexLanguageService
                 "简体中文",
                 false,
                 true,
-                "当前客户端未提供稳定可写语言配置，本程序不会修改内部数据库或安装资源");
+                "当前客户端没有已验证的本地界面语言适配器，本程序不会把 .codex 中的普通 language/locale 字段冒充桌面界面设置，也不会修改内部数据库或安装资源");
         }
 
         var (file, entry) = candidate.Value;
@@ -81,7 +92,7 @@ public sealed class CodexLanguageService
         File.WriteAllText(_backupFile, JsonSerializer.Serialize(backup, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
 
         ReplaceValue(file.Path, entry.Name, "zh-CN");
-        return new CodexLanguageState("zh-CN", "简体中文", "简体中文", true, false, "已通过可逆文本配置设置为简体中文");
+        return new CodexLanguageState("zh-CN", "简体中文", "简体中文", true, false, "已通过经过明确批准的可逆语言适配器设置为简体中文");
     }
 
     public CodexLanguageState RestorePreviousLanguage()
@@ -102,9 +113,10 @@ public sealed class CodexLanguageService
         if (backup is null ||
             !File.Exists(backup.ConfigPath) ||
             !SupportedExtensions.Contains(Path.GetExtension(backup.ConfigPath)) ||
-            !SupportedKeys.Contains(backup.Key))
+            !SupportedKeys.Contains(backup.Key) ||
+            !_approvedUiConfigPaths.Contains(SafeFullPath(backup.ConfigPath)))
         {
-            return new CodexLanguageState("未知", "未知", "未知", false, true, "语言备份不符合安全恢复条件");
+            return new CodexLanguageState("未知", "未知", "未知", false, true, "语言备份不符合当前安全适配器的恢复条件");
         }
 
         ReplaceValue(backup.ConfigPath, backup.Key, backup.PreviousValue);
@@ -117,11 +129,13 @@ public sealed class CodexLanguageService
             "已恢复原语言");
     }
 
-    private static (CodexConfigFileInfo File, CodexConfigEntryInfo Entry)? FindSupportedCandidate(CodexDiscoveryResult discovery)
+    private (CodexConfigFileInfo File, CodexConfigEntryInfo Entry)? FindSupportedCandidate(CodexDiscoveryResult discovery)
     {
         foreach (var file in discovery.ConfigFiles)
         {
             if (!file.Exists || !SupportedExtensions.Contains(Path.GetExtension(file.Path))) continue;
+            if (!_approvedUiConfigPaths.Contains(SafeFullPath(file.Path))) continue;
+
             foreach (var entry in file.Entries)
             {
                 if (entry.Sensitive || !entry.Configured || !SupportedKeys.Contains(entry.Name)) continue;
@@ -129,6 +143,12 @@ public sealed class CodexLanguageService
             }
         }
         return null;
+    }
+
+    private static string SafeFullPath(string path)
+    {
+        try { return Path.GetFullPath(path); }
+        catch { return string.Empty; }
     }
 
     private static string? ReadCurrentValue(string path, string key)
