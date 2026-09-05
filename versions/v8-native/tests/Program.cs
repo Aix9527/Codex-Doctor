@@ -1,4 +1,5 @@
 using CodexDoctor.Native;
+using System.Text.Json;
 
 static void Assert(bool condition, string message)
 {
@@ -33,6 +34,28 @@ Assert(text.Contains("FOO=bar"), "必须保留无关 .env 配置。");
 Assert(text.Contains("HTTP_PROXY=http://127.0.0.1:7897"), "必须写入新 HTTP_PROXY。");
 Assert(!text.Contains("127.0.0.1:1111"), "旧代理必须被移除。");
 Directory.Delete(temp, true);
+
+// 导出报告的用户可见字段必须为中文，不暴露英文模型属性名。
+var reportSample = new DiagnosisResult(
+    "8.0",
+    HealthState.Warning,
+    FailureClass.ProxyRequired,
+    "需要配置代理",
+    "建议写入 Codex 专用 .env。",
+    new ProbeResult(true),
+    new ProbeResult(false, "TCP/TLS 连接超时。"),
+    new ProbeResult(true, StatusCode: 403),
+    "http://127.0.0.1:7897",
+    new ProxyEnvironmentState(false, "", ""),
+    new ConflictState("", "", false),
+    new ConflictState("", "", false),
+    new TunState(true, false, ["clash-verge"], []),
+    2);
+var reportJson = JsonSerializer.Serialize(reportSample);
+foreach (var field in new[] { "版本", "健康状态", "故障分类", "诊断建议", "DNS诊断", "直连TLS诊断", "代理HTTPS诊断", "代理地址", "Codex专用环境文件", "Git代理", "npm代理", "TUN状态", "Codex进程数量" })
+    Assert(reportJson.Contains($"\"{field}\""), $"报告缺少中文字段：{field}");
+Assert(!reportJson.Contains("\"FailureClass\""), "报告不应暴露英文 FailureClass 字段。");
+Assert(!reportJson.Contains("\"Health\""), "报告不应暴露英文 Health 字段。");
 
 // 全中文 GUI 文案合同。
 var sourceRoot = Directory.GetParent(AppContext.BaseDirectory)!;
