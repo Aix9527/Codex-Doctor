@@ -1,12 +1,6 @@
 name: release-v7.1
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'versions/v7/**'
-      - 'RELEASE_NOTES_V7.1.md'
-      - '.github/workflows/release-v7.1.yml'
   workflow_dispatch:
 
 permissions:
@@ -45,15 +39,9 @@ jobs:
           Compress-Archive -Path '.\dist\Codex-Doctor-V7.1\*' -DestinationPath '.\dist\Codex-Doctor-V7.1-Windows.zip' -Force
           $hash=(Get-FileHash '.\dist\Codex-Doctor-V7.1-Windows.zip' -Algorithm SHA256).Hash
           Set-Content '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' "$hash  Codex-Doctor-V7.1-Windows.zip" -Encoding ASCII
-      - name: Create GitHub Release v7.1
+      - name: Update GitHub Release v7.1 manually
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cmd.exe /c "gh release view v7.1 --repo %GITHUB_REPOSITORY% >nul 2>nul"
-          $exists = ($LASTEXITCODE -eq 0)
-          if ($exists) {
-            gh release upload v7.1 '.\dist\Codex-Doctor-V7.1-Windows.zip' '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' --clobber --repo "$env:GITHUB_REPOSITORY"
-          } else {
-            gh release create v7.1 '.\dist\Codex-Doctor-V7.1-Windows.zip' '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V7.1' --notes-file '.\RELEASE_NOTES_V7.1.md' --repo "$env:GITHUB_REPOSITORY"
-          }
+          gh release upload v7.1 '.\dist\Codex-Doctor-V7.1-Windows.zip' '.\dist\Codex-Doctor-V7.1-Windows.zip.sha256' --clobber --repo "$env:GITHUB_REPOSITORY"
