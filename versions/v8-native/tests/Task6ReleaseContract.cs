@@ -30,10 +30,14 @@ internal static class Task6ReleaseContract
         var workflow = File.ReadAllText(workflowPath);
         foreach (var token in new[] { "v8.0.1", "PublishSingleFile=true", "IncludeNativeLibrariesForSelfExtract=true", "CodexDoctor.exe", "CodexDoctor.exe.sha256" })
             Require(workflow.Contains(token), $"V8.0.1 发布工作流缺少：{token}");
+        Require(!workflow.Contains("--clobber"), "V8.0.1 Release 已存在时不得覆盖既有资产。");
+        Require(workflow.Contains("Release 已存在，跳过发布"), "V8.0.1 Release 已存在时必须明确跳过。");
 
         var oldWorkflow = File.ReadAllText(Path.Combine(repoRoot.FullName, ".github", "workflows", "release-v8.0.yml"));
         Require(oldWorkflow.Contains("workflow_dispatch:"), "旧 V8.0 Release 必须保留手动触发能力。");
         Require(!oldWorkflow.Contains("branches: [main]"), "旧 V8.0 Release 不得再监听 main，避免 V8.0.1 覆盖 V8.0.0 资产。");
+        Require(!oldWorkflow.Contains("--clobber"), "旧 V8.0 Release 已存在时不得覆盖既有资产。");
+        Require(oldWorkflow.Contains("Release 已存在，跳过发布"), "旧 V8.0 Release 已存在时必须明确跳过。");
     }
 
     private static void Require(bool condition, string message)
