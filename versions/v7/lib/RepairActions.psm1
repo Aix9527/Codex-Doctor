@@ -34,7 +34,7 @@ function Set-CodexProxyEnvFile {
     $lines=@()
     if($filtered.Count){ $lines += $filtered; $lines += '' }
     $lines += @(
-        '# Managed by Codex Doctor V7',
+        '# 由 Codex Doctor V7 管理',
         "HTTP_PROXY=$ProxyUrl",
         "HTTPS_PROXY=$ProxyUrl",
         "http_proxy=$ProxyUrl",
@@ -49,7 +49,7 @@ function Set-CodexProxyEnvFile {
 function Clear-GitProxyConfig {
     [CmdletBinding(SupportsShouldProcess)]
     param()
-    if($PSCmdlet.ShouldProcess('git global proxy settings','clear')){
+    if($PSCmdlet.ShouldProcess('Git 全局代理设置','清理')){
         try { & git config --global --unset-all http.proxy 2>$null | Out-Null } catch {}
         try { & git config --global --unset-all https.proxy 2>$null | Out-Null } catch {}
     }
@@ -58,7 +58,7 @@ function Clear-GitProxyConfig {
 function Clear-NpmProxyConfig {
     [CmdletBinding(SupportsShouldProcess)]
     param()
-    if($PSCmdlet.ShouldProcess('npm global proxy settings','clear')){
+    if($PSCmdlet.ShouldProcess('npm 全局代理设置','清理')){
         try { & npm config delete proxy 2>$null | Out-Null } catch {}
         try { & npm config delete https-proxy 2>$null | Out-Null } catch {}
     }
@@ -67,7 +67,7 @@ function Clear-NpmProxyConfig {
 function Set-CodexUserProxyEnvironment {
     [CmdletBinding(SupportsShouldProcess)]
     param([Parameter(Mandatory)][string]$ProxyUrl)
-    if($PSCmdlet.ShouldProcess('Windows user environment','write Codex-compatible proxy variables')){
+    if($PSCmdlet.ShouldProcess('Windows 用户环境变量','写入 Codex 兼容代理变量')){
         foreach($n in @('HTTP_PROXY','HTTPS_PROXY','http_proxy','https_proxy')){
             [Environment]::SetEnvironmentVariable($n,$ProxyUrl,'User')
         }

@@ -15,17 +15,17 @@ function New-CodexRepairPlan {
 
     switch ($FailureClass) {
         'DNS' {
-            $advisory += 'Fix DNS resolution before changing Codex proxy settings.'
+            $advisory += '请先修复 DNS 解析，再修改 Codex 代理设置。'
         }
         'TLS' {
-            $advisory += 'Check TLS interception, HTTPS inspection, system clock, and certificate chain.'
+            $advisory += '请检查 TLS/HTTPS 检查、系统时间和证书链。'
         }
         'PROXY' {
             if ($ProxyAvailable) {
                 $actions += 'WRITE_CODEX_ENV'
                 $confirm = $true
             } else {
-                $advisory += 'Start or repair a local HTTP-compatible proxy before writing Codex proxy settings.'
+                $advisory += '请先启动或修复兼容 HTTP 的本地代理，再写入 Codex 代理设置。'
             }
         }
         'ENV_CONFLICT' {
@@ -34,7 +34,7 @@ function New-CodexRepairPlan {
             $confirm = $actions.Count -gt 0
         }
         'HEALTHY' {
-            $advisory += 'No repair is required. Restart or retest if the desktop client still shows Reconnecting.'
+            $advisory += '当前不需要自动修复。如果桌面端仍显示“正在重新连接”，请重启 Codex 后再次检测。'
         }
     }
 

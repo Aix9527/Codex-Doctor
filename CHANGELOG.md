@@ -1,5 +1,25 @@
 # Changelog
 
+## V8 Native
+- 使用 C# + .NET 8 + WinForms 原生重写，不再通过 PowerShell 启动器运行主程序
+- 正式目标为 `win-x64`、self-contained、single-file 的 `CodexDoctor.exe`
+- 用户无需安装 .NET，运行时不依赖 `.ps1` / `.psm1`
+- GUI、弹窗、日志、诊断建议全部中文化
+- DNS、直接 TLS、显式代理 HTTPS、TUN、Git/npm 代理冲突统一诊断
+- 新增 `PROXY_REQUIRED` / “需要配置代理”语义：直连 TLS 失败但已验证本地代理可用且 `.codex/.env` 缺失时，不再误报 TLS 故障
+- 真实 2026-09-05 诊断样本已加入回归测试
+- `.codex/.env` 修复保留无关配置并自动备份旧文件
+- Windows 用户环境变量写入默认关闭
+- 保留 Codex 重启、`.codex` 迁移/恢复、报告导出、`codex doctor`、Git/npm 清理
+- Windows CI 实际执行 `dotnet publish`，验证 PE 文件头、单文件发布、无 PowerShell 运行依赖并生成 SHA256
+
+## V7.1.2 中文兼容版
+- 保留 V7.1.2 PowerShell 实现作为历史/兼容版本
+- GUI 标题、按钮、弹窗、日志、错误提示、诊断建议中文化
+- 导出报告改为中文字段和中文状态说明
+- 保留 UTF-8 BOM / Windows PowerShell 5.1 兼容修复
+- 保留 Git/npm 单元素代理结果 `.Count` 回归修复
+
 ## V7.1
 - Release Edition based on V7 Unified GUI
 - Reproducible Windows EXE launcher build using pinned `ps2exe 1.0.18`
