@@ -55,7 +55,7 @@ V8 必须将该状态判断为：
 
 而不是误报为“TLS 故障”。
 
-## 发布方式
+## 发布与版本保护
 
 GitHub Actions 在 Windows runner 上执行：
 
@@ -70,6 +70,8 @@ dotnet publish .\versions\v8-native\CodexDoctor.Native.csproj `
   -p:DebugType=None `
   -p:DebugSymbols=false
 ```
+
+V8.0.0 的旧发布工作流已固定为仅手动触发，避免 V8.0.1 合并后覆盖历史 Release 资产。V8.0.1 使用独立 Release 流程。
 
 正式发布目标继续保持：
 
