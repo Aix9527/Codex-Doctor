@@ -1,12 +1,6 @@
 name: release-v8.0
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'versions/v8-native/**'
-      - 'RELEASE_NOTES_V8.0.md'
-      - '.github/workflows/release-v8.0.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +8,6 @@ permissions:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
