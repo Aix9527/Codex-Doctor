@@ -12,4 +12,7 @@
     <Description>Codex 网络诊断与安全修复工具</Description>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
 </Project>
