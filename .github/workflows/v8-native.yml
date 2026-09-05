@@ -24,32 +24,34 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: 运行 V8 原生回归测试
-        shell: powershell
+        shell: pwsh
         run: dotnet run --project '.\versions\v8-native\tests\CodexDoctor.Native.Tests.csproj' -c Release
 
       - name: 发布真正的单文件 EXE
-        shell: powershell
+        shell: pwsh
         run: |
           Remove-Item '.\dist\v8-native' -Recurse -Force -ErrorAction SilentlyContinue
           dotnet publish '.\versions\v8-native\CodexDoctor.Native.csproj' -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o '.\dist\v8-native'
 
-      - name: 验证 EXE 与无 PowerShell 依赖合同
-        shell: powershell
+      - name: 验证 EXE 与无 PowerShell 运行依赖合同
+        shell: pwsh
         run: |
           $exe = '.\dist\v8-native\CodexDoctor.exe'
           if (-not (Test-Path $exe)) { throw '未生成 CodexDoctor.exe。' }
-          $bytes=[IO.File]::ReadAllBytes((Resolve-Path $exe))
+          $bytes = [IO.File]::ReadAllBytes((Resolve-Path $exe))
           if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw '输出不是有效 PE EXE。' }
           $forbidden = Get-ChildItem '.\dist\v8-native' -Recurse -File | Where-Object { $_.Extension -in '.ps1','.psm1','.dll','.runtimeconfig.json','.deps.json' }
           if ($forbidden) { $forbidden | ForEach-Object { Write-Error $_.FullName }; throw '发布目录包含不应存在的运行时依赖文件。' }
           $source = Get-ChildItem '.\versions\v8-native' -Filter '*.cs' -File | Get-Content -Raw
           $joined = $source -join "`n"
-          foreach($token in @('powershell.exe','pwsh.exe','.ps1','.psm1')) { if($joined -match [regex]::Escape($token)){ throw "原生源码包含禁止依赖：$token" } }
+          foreach ($token in @('powershell.exe','pwsh.exe','.ps1','.psm1')) {
+            if ($joined -match [regex]::Escape($token)) { throw "原生源码包含禁止依赖：$token" }
+          }
 
       - name: 生成 SHA256
-        shell: powershell
+        shell: pwsh
         run: |
-          $hash=(Get-FileHash '.\dist\v8-native\CodexDoctor.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hash = (Get-FileHash '.\dist\v8-native\CodexDoctor.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content '.\dist\v8-native\CodexDoctor.exe.sha256' "$hash  CodexDoctor.exe" -Encoding ASCII
           Write-Host "SHA256=$hash"
 
