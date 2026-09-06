@@ -173,7 +173,7 @@ public sealed class WindowsDesktopWindowLocator : IDesktopWindowLocator
     private static IReadOnlyList<DesktopWindowCandidate> EnumerateTopLevelWindows()
     {
         var result = new List<DesktopWindowCandidate>();
-        EnumWindowsProc callback = (handle, _) =>
+        EnumWindowsProc callback = (handle, ignored) =>
         {
             try
             {
