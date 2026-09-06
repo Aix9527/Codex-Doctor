@@ -14,23 +14,28 @@ public sealed record HealthScanProgress(string StageId, string StageNameZh, int 
 
 public sealed class CodexHealthScanner
 {
-    private readonly IReadOnlyList<IHealthCheck> _checks;
+    private readonly IReadOnlyList<IHealthCheck>? _fixedChecks;
     private readonly Func<Task<CodexDiscoveryResult>> _discoverySnapshot;
     private readonly Func<Task<DiagnosisResult?>> _diagnosisSnapshot;
+    private readonly Func<Lazy<Task<CodexDiscoveryResult>>, Lazy<Task<DiagnosisResult?>>, IReadOnlyList<IHealthCheck>>? _checkFactory;
 
     public CodexHealthScanner(IEnumerable<IHealthCheck> checks)
-        : this(checks, () => Task.FromResult(CodexDiscoveryResult.Empty()), () => Task.FromResult<DiagnosisResult?>(null))
     {
+        _fixedChecks = checks?.ToArray() ?? throw new ArgumentNullException(nameof(checks));
+        _discoverySnapshot = () => Task.FromResult(CodexDiscoveryResult.Empty());
+        _diagnosisSnapshot = () => Task.FromResult<DiagnosisResult?>(null);
+        _checkFactory = null;
     }
 
-    private CodexHealthScanner(
-        IEnumerable<IHealthCheck> checks,
+    public CodexHealthScanner(
         Func<Task<CodexDiscoveryResult>> discoverySnapshot,
-        Func<Task<DiagnosisResult?>> diagnosisSnapshot)
+        Func<Task<DiagnosisResult?>> diagnosisSnapshot,
+        Func<Lazy<Task<CodexDiscoveryResult>>, Lazy<Task<DiagnosisResult?>>, IReadOnlyList<IHealthCheck>> checkFactory)
     {
-        _checks = checks?.ToArray() ?? throw new ArgumentNullException(nameof(checks));
-        _discoverySnapshot = discoverySnapshot;
-        _diagnosisSnapshot = diagnosisSnapshot;
+        _fixedChecks = null;
+        _discoverySnapshot = discoverySnapshot ?? throw new ArgumentNullException(nameof(discoverySnapshot));
+        _diagnosisSnapshot = diagnosisSnapshot ?? throw new ArgumentNullException(nameof(diagnosisSnapshot));
+        _checkFactory = checkFactory ?? throw new ArgumentNullException(nameof(checkFactory));
     }
 
     public static CodexHealthScanner CreateDefault(string? userProfile = null, string? localAppData = null, string? appData = null)
@@ -39,22 +44,30 @@ public sealed class CodexHealthScanner
         var diagnosisService = new DiagnosisService(userProfile);
         var languageService = new CodexLanguageService();
 
-        var discovery = new Lazy<Task<CodexDiscoveryResult>>(() => discoveryService.ScanAsync());
-        var diagnosis = new Lazy<Task<DiagnosisResult?>>(() => RunDiagnosisAsync(diagnosisService));
-        var checks = BuildDefaultChecks(discovery, diagnosis, languageService, localAppData);
-
-        return new CodexHealthScanner(checks, () => discovery.Value, () => diagnosis.Value);
+        return new CodexHealthScanner(
+            () => discoveryService.ScanAsync(),
+            () => RunDiagnosisAsync(diagnosisService),
+            (discovery, diagnosis) => BuildDefaultChecks(discovery, diagnosis, languageService, localAppData));
     }
 
     public async Task<CodexHealthScanResult> ScanAsync(
         IProgress<HealthScanProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        // Snapshot lazies are intentionally created per scan cycle. This keeps expensive
+        // discovery/diagnosis shared by all checks within one scan, while guaranteeing
+        // that a later manual scan or post-repair rescan observes fresh machine state.
+        var discoverySnapshot = new Lazy<Task<CodexDiscoveryResult>>(_discoverySnapshot);
+        var diagnosisSnapshot = new Lazy<Task<DiagnosisResult?>>(_diagnosisSnapshot);
+        var checks = _checkFactory is null
+            ? _fixedChecks ?? Array.Empty<IHealthCheck>()
+            : _checkFactory(discoverySnapshot, diagnosisSnapshot);
+
         var issues = new List<CodexIssue>();
-        var total = _checks.Count;
+        var total = checks.Count;
         var completed = 0;
 
-        foreach (var check in _checks)
+        foreach (var check in checks)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
@@ -88,9 +101,9 @@ public sealed class CodexHealthScanner
 
         CodexDiscoveryResult discovery;
         DiagnosisResult? diagnosis;
-        try { discovery = await _discoverySnapshot().ConfigureAwait(false); }
+        try { discovery = await discoverySnapshot.Value.ConfigureAwait(false); }
         catch { discovery = CodexDiscoveryResult.Empty(); }
-        try { diagnosis = await _diagnosisSnapshot().ConfigureAwait(false); }
+        try { diagnosis = await diagnosisSnapshot.Value.ConfigureAwait(false); }
         catch { diagnosis = null; }
 
         return new CodexHealthScanResult(
