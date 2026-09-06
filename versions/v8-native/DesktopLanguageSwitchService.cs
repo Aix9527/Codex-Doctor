@@ -170,44 +170,44 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
         {
             var root = BindConfirmedRoot(desktop);
             if (root is null)
-                return new(false, false, false, "没有找到与扫描结果匹配的 Desktop 主窗口，未执行 UI Automation。 ");
+                return new(false, false, false, "没有找到与扫描结果匹配的 Desktop 主窗口，未执行 UI Automation。");
 
             dynamic automation = CreateAutomation();
             dynamic currentRoot = root;
 
-            var settings = FindByNames(automation, currentRoot, ["Settings", "设置"]);
+            var settings = FindByNames(automation, currentRoot, new string[] { "Settings", "设置" });
             if (settings is null)
             {
-                var account = FindByNames(automation, currentRoot, ["Profile", "Account", "账户", "个人资料", "个人中心"]);
+                var account = FindByNames(automation, currentRoot, new string[] { "Profile", "Account", "账户", "个人资料", "个人中心" });
                 if (account is not null)
                 {
                     TryInvokeOrExpand(account);
                     await Task.Delay(250, cancellationToken).ConfigureAwait(false);
                     currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
-                    settings = FindByNames(automation, currentRoot, ["Settings", "设置"]);
+                    settings = FindByNames(automation, currentRoot, new string[] { "Settings", "设置" });
                 }
             }
             if (settings is null || !TryInvokeOrExpand(settings))
-                return new(false, false, false, "未能在已确认 Desktop 窗口中找到或打开 Settings/设置。 ");
+                return new(false, false, false, "未能在已确认 Desktop 窗口中找到或打开 Settings/设置。");
 
             await Task.Delay(300, cancellationToken).ConfigureAwait(false);
             currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
 
-            var general = FindByNames(automation, currentRoot, ["General", "通用"]);
+            var general = FindByNames(automation, currentRoot, new string[] { "General", "通用" });
             if (general is not null) TryInvokeOrExpand(general);
             await Task.Delay(180, cancellationToken).ConfigureAwait(false);
 
             currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
-            var language = FindByNames(automation, currentRoot, ["Language", "语言"]);
+            var language = FindByNames(automation, currentRoot, new string[] { "Language", "语言" });
             if (language is null || !TryInvokeOrExpand(language))
-                return new(false, false, false, "未能在 Settings → General 中找到可自动操作的 Language/语言控件。 ");
+                return new(false, false, false, "未能在 Settings → General 中找到可自动操作的 Language/语言控件。");
 
             await Task.Delay(180, cancellationToken).ConfigureAwait(false);
             currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
             var targetNames = TargetNames(targetLanguage);
             var target = FindByNames(automation, currentRoot, targetNames);
             if (target is null || !TrySelectOrInvoke(target))
-                return new(false, false, false, $"已打开语言控件，但没有找到可选择的目标语言 {targetLanguage}。 ");
+                return new(false, false, false, $"已打开语言控件，但没有找到可选择的目标语言 {targetLanguage}。");
 
             await Task.Delay(250, cancellationToken).ConfigureAwait(false);
             var verified = await VerifyAsync(desktop, targetLanguage, cancellationToken).ConfigureAwait(false);
@@ -237,7 +237,7 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
             var target = FindByNames(automation, root, TargetNames(targetLanguage));
             if (target is not null && IsSelected(target)) return Task.FromResult(true);
 
-            var language = FindByNames(automation, root, ["Language", "语言"]);
+            var language = FindByNames(automation, root, new string[] { "Language", "语言" });
             if (language is not null)
             {
                 var value = TryCurrentValue(language);
@@ -326,6 +326,6 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
     }
 
     private static string[] TargetNames(string targetLanguage) => targetLanguage.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)
-        ? ["简体中文", "中文", "Chinese (Simplified)", "Chinese"]
-        : ["English", "English (US)", "English (United States)"];
+        ? new string[] { "简体中文", "中文", "Chinese (Simplified)", "Chinese" }
+        : new string[] { "English", "English (US)", "English (United States)" };
 }
