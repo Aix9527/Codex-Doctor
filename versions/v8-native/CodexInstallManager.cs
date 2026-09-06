@@ -220,9 +220,9 @@ public sealed class InstallCommandRunner : IInstallCommandRunner
 
     private static string BuildCmdArguments(string fileName, string arguments)
     {
-        var command = "\"" + fileName.Replace("\"", "\"\"") + "\"";
-        if (!string.IsNullOrWhiteSpace(arguments)) command += " " + arguments;
-        return "/d /s /c \"" + command.Replace("\"", "\\\"") + "\"";
+        var escaped = fileName.Replace("\"", "\"\"");
+        var suffix = string.IsNullOrWhiteSpace(arguments) ? string.Empty : " " + arguments;
+        return $"/d /s /c \"\"{escaped}\"{suffix}\"";
     }
 
     private static async Task<string> SafeRead(Task<string> task)
