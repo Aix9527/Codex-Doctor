@@ -7,9 +7,13 @@
     <Nullable>enable</Nullable>
     <AssemblyName>CodexDoctor</AssemblyName>
     <RootNamespace>CodexDoctor.Native</RootNamespace>
-    <Version>8.0.1</Version>
-    <Product>Codex Doctor 原生版</Product>
-    <Description>Codex 网络诊断、本机发现、中文设置与安全修复工具</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>8.1.0</Version>
+    <Product>Codex Doctor</Product>
+    <Company>Aix</Company>
+    <Authors>Aix</Authors>
+    <Copyright>Copyright © Aix</Copyright>
+    <Description>Codex Doctor 一键扫描、智能问题分级与安全自动维修中心</Description>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
