@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace CodexDoctor.Native;
 
 public enum DesktopUiLanguage
@@ -160,6 +158,13 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
     private const int SelectionItemPatternId = 10010;
     private const int TreeScopeDescendants = 4;
 
+    private readonly IDesktopWindowLocator _windowLocator;
+
+    public WindowsUiAutomationLanguageBackend(IDesktopWindowLocator? windowLocator = null)
+    {
+        _windowLocator = windowLocator ?? new WindowsDesktopWindowLocator();
+    }
+
     public async Task<LanguageBackendResult> SetAsync(
         CodexDesktopInstallationInfo desktop,
         string targetLanguage,
@@ -168,9 +173,9 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var root = BindConfirmedRoot(desktop);
+            var root = BindConfirmedRoot(desktop, out var binding);
             if (root is null)
-                return new(false, false, false, "没有找到与扫描结果匹配的 Desktop 主窗口，未执行 UI Automation。");
+                return new(false, false, false, $"没有找到与扫描结果安全匹配的 Desktop 主窗口，未执行 UI Automation。{binding.DiagnosticZh}");
 
             dynamic automation = CreateAutomation();
             dynamic currentRoot = root;
@@ -183,31 +188,31 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
                 {
                     TryInvokeOrExpand(account);
                     await Task.Delay(250, cancellationToken).ConfigureAwait(false);
-                    currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
+                    currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
                     settings = FindByNames(automation, currentRoot, new string[] { "Settings", "设置" });
                 }
             }
             if (settings is null || !TryInvokeOrExpand(settings))
-                return new(false, false, false, "未能在已确认 Desktop 窗口中找到或打开 Settings/设置。");
+                return new(false, false, false, $"Desktop 窗口已绑定（{binding.Method}，PID={binding.ProcessId}），但未能找到或打开 Settings/设置。");
 
             await Task.Delay(300, cancellationToken).ConfigureAwait(false);
-            currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
+            currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
 
             var general = FindByNames(automation, currentRoot, new string[] { "General", "通用" });
             if (general is not null) TryInvokeOrExpand(general);
             await Task.Delay(180, cancellationToken).ConfigureAwait(false);
 
-            currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
+            currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
             var language = FindByNames(automation, currentRoot, new string[] { "Language", "语言" });
             if (language is null || !TryInvokeOrExpand(language))
-                return new(false, false, false, "未能在 Settings → General 中找到可自动操作的 Language/语言控件。");
+                return new(false, false, false, $"Desktop 窗口已绑定（{binding.Method}），Settings 已打开，但未能在 General/通用中找到可自动操作的 Language/语言控件。");
 
             await Task.Delay(180, cancellationToken).ConfigureAwait(false);
-            currentRoot = BindConfirmedRoot(desktop) ?? currentRoot;
+            currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
             var targetNames = TargetNames(targetLanguage);
             var target = FindByNames(automation, currentRoot, targetNames);
             if (target is null || !TrySelectOrInvoke(target))
-                return new(false, false, false, $"已打开语言控件，但没有找到可选择的目标语言 {targetLanguage}。");
+                return new(false, false, false, $"Desktop 窗口和 Language/语言控件已找到，但没有可选择的目标语言 {targetLanguage}。");
 
             await Task.Delay(250, cancellationToken).ConfigureAwait(false);
             var verified = await VerifyAsync(desktop, targetLanguage, cancellationToken).ConfigureAwait(false);
@@ -231,7 +236,7 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var root = BindConfirmedRoot(desktop);
+            var root = BindConfirmedRoot(desktop, out _);
             if (root is null) return Task.FromResult(false);
             dynamic automation = CreateAutomation();
             var target = FindByNames(automation, root, TargetNames(targetLanguage));
@@ -257,30 +262,20 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
             ?? throw new InvalidOperationException("无法初始化 UI Automation。");
     }
 
-    private static dynamic? BindConfirmedRoot(CodexDesktopInstallationInfo desktop)
+    private dynamic? BindConfirmedRoot(CodexDesktopInstallationInfo desktop, out DesktopWindowBindingResult binding)
     {
-        if (desktop.ProcessIds.Count == 0) return null;
-        string expected;
-        try { expected = Path.GetFullPath(desktop.ExecutablePath); }
-        catch { return null; }
+        binding = _windowLocator.Locate(desktop);
+        if (!binding.Found || binding.Handle == 0) return null;
 
-        foreach (var pid in desktop.ProcessIds.Distinct())
+        try
         {
-            try
-            {
-                using var process = Process.GetProcessById(pid);
-                if (process.MainWindowHandle == IntPtr.Zero) continue;
-                var actual = process.MainModule?.FileName;
-                if (!string.IsNullOrWhiteSpace(actual) &&
-                    !string.Equals(Path.GetFullPath(actual), expected, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                dynamic automation = CreateAutomation();
-                return automation.ElementFromHandle(process.MainWindowHandle);
-            }
-            catch { }
+            dynamic automation = CreateAutomation();
+            return automation.ElementFromHandle(binding.Handle);
         }
-        return null;
+        catch
+        {
+            return null;
+        }
     }
 
     private static dynamic? FindByNames(dynamic automation, dynamic root, IReadOnlyList<string> names)

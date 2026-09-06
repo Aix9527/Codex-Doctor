@@ -5,10 +5,10 @@ public static class V811UiUpgrade
     public static void Apply(MainForm form)
     {
         ArgumentNullException.ThrowIfNull(form);
-        form.Text = "Codex Doctor V8.1.1 原生维修中心";
+        form.Text = "Codex Doctor V8.1.2 原生维修中心";
 
         var title = form.Controls.OfType<Label>().FirstOrDefault(x => x.Text.StartsWith("Codex Doctor V8.1", StringComparison.Ordinal));
-        if (title is not null) title.Text = "Codex Doctor V8.1.1";
+        if (title is not null) title.Text = "Codex Doctor V8.1.2";
 
         var panel = form.Controls.OfType<FlowLayoutPanel>().FirstOrDefault()
             ?? throw new InvalidOperationException("未找到主操作区。");
@@ -23,7 +23,7 @@ public static class V811UiUpgrade
             legacyLanguage.Dispose();
         }
 
-        // V8.1.1 把八个主操作保持在同一行，不扩大面板避免遮挡下方迁移目标和问题列表。
+        // V8.1.x 把八个主操作保持在同一行，不扩大面板避免遮挡下方迁移目标和问题列表。
         panel.WrapContents = false;
         panel.Height = 56;
         ResizeExistingButtons(panel);
