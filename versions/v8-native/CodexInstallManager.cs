@@ -63,18 +63,27 @@ public sealed class CodexInstallManager
 
     public async Task<InstallOperationResult> UninstallDesktopAsync(CancellationToken cancellationToken = default)
     {
+        var before = await _discovery.ScanAsync(cancellationToken).ConfigureAwait(false);
+        var desktop = CodexDesktopSelector.SelectPreferred(before.DesktopClients);
+        if (desktop is null)
+            return Manual("重新扫描未发现可确认身份的 ChatGPT/Codex Desktop。不会猜测固定包 ID 或直接删除应用目录。");
+
+        var uninstallName = GetTrustedDesktopUninstallName(desktop);
+        if (uninstallName is null)
+            return Manual($"已发现 Desktop，但无法从已确认 EXE 安全确定卸载产品名：{Path.GetFileName(desktop.ExecutablePath)}。未执行卸载。");
+
         if (!_runner.IsAvailable("winget.exe"))
             return Manual("未发现 winget.exe，无法使用 Windows 官方包管理器卸载 Desktop。不会直接删除应用目录。");
 
-        const string args = "uninstall --id 9NT1R1C2HH7J --source msstore --silent --accept-source-agreements";
+        var args = $"uninstall --name \"{uninstallName}\" --exact --silent --accept-source-agreements --disable-interactivity";
         var command = await _runner.RunAsync("winget.exe", args, InstallTimeout, cancellationToken).ConfigureAwait(false);
-        if (!CommandSucceeded(command)) return CommandFailure("Desktop 卸载命令失败", command);
+        if (!CommandSucceeded(command)) return CommandFailure($"{uninstallName} Desktop 卸载命令失败", command);
 
         var after = await _discovery.ScanAsync(cancellationToken).ConfigureAwait(false);
         var verified = after.DesktopClients.Count == 0;
         return verified
-            ? Ok("Desktop 已通过 Windows/winget 卸载；用户配置和项目数据未由安装管理器删除。", command.ExitCode)
-            : Fail("winget 返回成功，但重新扫描仍发现 Desktop，因此不报告卸载成功。", command.ExitCode);
+            ? Ok($"{uninstallName} Desktop 已通过 Windows/winget 卸载，并经重新扫描确认；用户配置和项目数据未由安装管理器删除。", command.ExitCode)
+            : Fail($"winget 返回成功，但重新扫描仍发现 ChatGPT/Codex Desktop，因此不报告 {uninstallName} 卸载成功。", command.ExitCode);
     }
 
     public async Task<InstallOperationResult> InstallCliAsync(CancellationToken cancellationToken = default)
@@ -109,6 +118,17 @@ public sealed class CodexInstallManager
         return verified
             ? Ok("Codex CLI 已通过 npm 卸载，并经重新扫描确认。", command.ExitCode)
             : Fail("npm 返回成功，但重新扫描仍发现 Codex CLI，因此不报告卸载成功。", command.ExitCode);
+    }
+
+    private static string? GetTrustedDesktopUninstallName(CodexDesktopInstallationInfo desktop)
+    {
+        string fileName;
+        try { fileName = Path.GetFileName(desktop.ExecutablePath); }
+        catch { return null; }
+
+        if (fileName.Equals("ChatGPT.exe", StringComparison.OrdinalIgnoreCase)) return "ChatGPT";
+        if (fileName.Equals("Codex.exe", StringComparison.OrdinalIgnoreCase)) return "Codex";
+        return null;
     }
 
     private static bool CommandSucceeded(InstallCommandResult result) => !result.TimedOut && result.ExitCode == 0;
