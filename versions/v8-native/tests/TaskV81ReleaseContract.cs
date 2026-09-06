@@ -41,6 +41,10 @@ internal static class TaskV81ReleaseContract
         foreach (var phrase in new[] { "Aix", "976936105", "xch03209527" })
             Require((rootReadme + "\n" + nativeReadme).Contains(phrase, StringComparison.OrdinalIgnoreCase), $"V8.1 README 缺少公开作者信息：{phrase}");
 
+        var changelog = File.ReadAllText(Path.Combine(repo.FullName, "CHANGELOG.md"));
+        Require(changelog.Contains("V8.1.0", StringComparison.OrdinalIgnoreCase), "CHANGELOG 必须记录 V8.1.0。");
+        Require(changelog.Contains("自动复检", StringComparison.OrdinalIgnoreCase), "CHANGELOG 必须记录 V8.1 自动复检能力。");
+
         var ci = File.ReadAllText(Path.Combine(repo.FullName, ".github", "workflows", "v8-native.yml"));
         foreach (var token in new[] { "0x4D", "0x5A", ".ps1", ".psm1", ".dll", "powershell.exe", "pwsh.exe", "SHA256" })
             Require(ci.Contains(token, StringComparison.OrdinalIgnoreCase), $"v8-native 最终门禁缺少：{token}");
