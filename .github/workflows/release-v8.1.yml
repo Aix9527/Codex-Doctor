@@ -1,12 +1,6 @@
 name: release-v8.1
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'versions/v8-native/**'
-      - 'RELEASE_NOTES_V8.1.0.md'
-      - '.github/workflows/release-v8.1.yml'
   workflow_dispatch:
 
 permissions:
