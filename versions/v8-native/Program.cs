@@ -7,6 +7,8 @@ internal static class Program
     {
         ApplicationConfiguration.Initialize();
         if (!AdminGuard.EnsureAdministratorOrExit()) return;
-        Application.Run(new MainForm());
+        var form = new MainForm();
+        V811UiUpgrade.Apply(form);
+        Application.Run(form);
     }
 }

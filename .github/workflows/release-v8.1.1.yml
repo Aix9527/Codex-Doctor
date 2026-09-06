@@ -1,6 +1,14 @@
-name: release-v8.1
+name: release-v8.1.1
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'versions/v8-native/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'RELEASE_NOTES_V8.1.1.md'
+      - '.github/workflows/release-v8.1.1.yml'
   workflow_dispatch:
 
 permissions:
@@ -17,17 +25,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: 运行 V8.1.0 原生回归测试
+      - name: 运行 V8.1.1 原生回归测试
         shell: pwsh
         run: dotnet run --project '.\versions\v8-native\tests\CodexDoctor.Native.Tests.csproj' -c Release
 
-      - name: 发布 V8.1.0 原生单文件 EXE
+      - name: 发布 V8.1.1 原生单文件 EXE
         shell: pwsh
         run: |
           Remove-Item '.\dist\v8-native' -Recurse -Force -ErrorAction SilentlyContinue
           dotnet publish '.\versions\v8-native\CodexDoctor.Native.csproj' -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o '.\dist\v8-native'
 
-      - name: 验证 V8.1.0 真正单文件与原生运行合同
+      - name: 验证 V8.1.1 真正单文件与原生运行合同
         shell: pwsh
         run: |
           $exe = '.\dist\v8-native\CodexDoctor.exe'
@@ -42,9 +50,9 @@ jobs:
           }
 
           $manifest = Get-Content '.\versions\v8-native\app.manifest' -Raw
-          if ($manifest -notmatch 'requireAdministrator') { throw 'V8.1.0 manifest 未强制管理员权限。' }
+          if ($manifest -notmatch 'requireAdministrator') { throw 'V8.1.1 manifest 未强制管理员权限。' }
           $project = Get-Content '.\versions\v8-native\CodexDoctor.Native.csproj' -Raw
-          if ($project -notmatch '<Version>8\.1\.0</Version>') { throw '项目版本不是 8.1.0。' }
+          if ($project -notmatch '<Version>8\.1\.1</Version>') { throw '项目版本不是 8.1.1。' }
 
           $source = Get-ChildItem '.\versions\v8-native' -Filter '*.cs' -File | Get-Content -Raw
           $joined = $source -join "`n"
@@ -59,16 +67,16 @@ jobs:
           Set-Content '.\dist\v8-native\CodexDoctor.exe.sha256' "$hash  CodexDoctor.exe" -Encoding ASCII
           Write-Host "SHA256=$hash"
 
-      - name: 创建 GitHub Release v8.1.0
+      - name: 创建 GitHub Release v8.1.1
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v8.1.0 --repo "$env:GITHUB_REPOSITORY" *> $null
+          gh release view v8.1.1 --repo "$env:GITHUB_REPOSITORY" *> $null
           $exists = ($LASTEXITCODE -eq 0)
           if ($exists) {
-            Write-Host 'Release 已存在，跳过发布且不覆盖任何现有资产：v8.1.0'
+            Write-Host 'Release 已存在，跳过发布且不覆盖任何现有资产：v8.1.1'
             exit 0
           }
 
-          gh release create v8.1.0 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.1.0 原生维修中心' --notes-file '.\RELEASE_NOTES_V8.1.0.md' --repo "$env:GITHUB_REPOSITORY"
+          gh release create v8.1.1 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.1.1 双向语言与安装管理' --notes-file '.\RELEASE_NOTES_V8.1.1.md' --repo "$env:GITHUB_REPOSITORY"

@@ -1,5 +1,18 @@
 # Changelog
 
+## V8.1.1 双向语言与安装管理
+- 主界面将旧“一键中文”升级为 **中文 / English** 双向切换按钮，目标固定为 `zh-CN` / `en-US`
+- 语言切换优先可信 Desktop UI 适配器；无可信适配器时仅对扫描确认的 Desktop EXE/PID 尝试 Windows UI Automation
+- 语言操作必须重新读取/重新扫描验证；无法验证时不伪报成功，不修改未知数据库、普通 `.codex` 语言字段、MSIX/AppX 或二进制资源
+- 新增 Codex Desktop / CLI 独立安装管理窗口，显示安装状态、路径与版本
+- Desktop 自动安装/卸载只使用 Microsoft Store / winget 官方包 ID `9NT1R1C2HH7J`
+- CLI 自动安装/卸载只使用 npm 官方包 `@openai/codex`
+- winget/npm 缺失时返回 `ManualRequired`，不下载第三方安装器、不猜测来源
+- 安装/卸载命令退出码不能单独判定成功，动作结束后必须重新 discovery 扫描验证
+- Desktop / CLI 卸载默认保留 `.codex`、用户项目、Codex Doctor 备份与报告，并在 GUI 中二次确认
+- 主界面 `安装 / 卸载` 与语言按钮均在扫描完成后启用；实际变更后回到主维修中心自动重新扫描
+- 产品版本固定为 8.1.1；Windows CI / Release 继续验证管理员 manifest、PE MZ、真正单文件、无 PowerShell/外置 DLL 和 SHA256
+
 ## V8.1.0 原生维修中心
 - 强制 Windows `requireAdministrator` / UAC 启动门，产品版本固定为 8.1.0
 - 首页升级为“先扫描 → 问题分级 → 一键修复 → 自动复检”的维修中心
