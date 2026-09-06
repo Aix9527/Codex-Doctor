@@ -8,12 +8,12 @@
     <AssemblyName>CodexDoctor</AssemblyName>
     <RootNamespace>CodexDoctor.Native</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>8.1.0</Version>
+    <Version>8.1.1</Version>
     <Product>Codex Doctor</Product>
     <Company>Aix</Company>
     <Authors>Aix</Authors>
     <Copyright>Copyright © Aix</Copyright>
-    <Description>Codex Doctor 一键扫描、智能问题分级与安全自动维修中心</Description>
+    <Description>Codex Doctor 一键扫描、智能问题分级、安全自动维修、中英文切换与安装管理中心</Description>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
