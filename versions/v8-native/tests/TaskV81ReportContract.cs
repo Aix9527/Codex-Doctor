@@ -34,7 +34,9 @@ internal static class TaskV81ReportContract
         var exporter = new HealthReportExporter(profile, () => true);
         var json = exporter.BuildJson(after, repairAndRescan, plan);
 
-        Require(json.Contains("\"版本\": \"8.1.0\""), "报告必须声明 V8.1.0。");
+        // 这是 V8.1 报告格式/隐私兼容合同，不应把后续补丁版本永久锁死在 8.1.0；
+        // 当前具体版本由对应发布合同（例如 V8.1.2）单独精确校验。
+        Require(json.Contains("\"版本\": \"8.1.", StringComparison.Ordinal), "报告必须声明 V8.1.x 版本。");
         Require(json.Contains("\"软件作者\": \"Aix\""), "报告作者必须只写 Aix。");
         Require(json.Contains("\"管理员权限\": true"), "报告必须记录管理员权限状态。");
         Require(json.Contains("\"修复计划\""), "报告必须包含 RepairPlan 摘要。");
