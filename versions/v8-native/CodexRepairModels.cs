@@ -62,3 +62,8 @@ public sealed record RepairActionResult(
 public sealed record RepairSessionResult(
     [property: JsonPropertyName("计划ID")] Guid PlanId,
     [property: JsonPropertyName("动作结果")] IReadOnlyList<RepairActionResult> Actions);
+
+public sealed record RepairAndRescanResult(
+    [property: JsonPropertyName("修复前")] CodexHealthScanResult BeforeScan,
+    [property: JsonPropertyName("修复执行")] RepairSessionResult Repair,
+    [property: JsonPropertyName("修复后")] CodexHealthScanResult AfterScan);
