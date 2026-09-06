@@ -1,7 +1,7 @@
 # Changelog
 
 ## V8.1.1 双向语言与安装管理
-- 主界面将旧“一键中文”升级为独立 `中文` / `English` 双向切换按钮，目标固定为 `zh-CN` / `en-US`
+- 主界面将旧“一键中文”升级为 **中文 / English** 双向切换按钮，目标固定为 `zh-CN` / `en-US`
 - 语言切换优先可信 Desktop UI 适配器；无可信适配器时仅对扫描确认的 Desktop EXE/PID 尝试 Windows UI Automation
 - 语言操作必须重新读取/重新扫描验证；无法验证时不伪报成功，不修改未知数据库、普通 `.codex` 语言字段、MSIX/AppX 或二进制资源
 - 新增 Codex Desktop / CLI 独立安装管理窗口，显示安装状态、路径与版本
