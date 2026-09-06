@@ -22,7 +22,7 @@ internal static class TaskV811InstallManagerContract
         };
 
         var runner = new FakeRunner();
-        var discovery = new QueueDiscovery([desktopFound, empty, cliFound, empty]);
+        var discovery = new QueueDiscovery([desktopFound, desktopFound, empty, cliFound, empty]);
         var manager = new CodexInstallManager(runner, discovery);
 
         var desktopInstall = await manager.InstallDesktopAsync();
