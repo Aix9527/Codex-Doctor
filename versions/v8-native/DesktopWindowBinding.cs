@@ -223,7 +223,7 @@ public sealed class WindowsDesktopWindowLocator : IDesktopWindowLocator
             do
             {
                 var pid = unchecked((int)entry.ProcessId);
-                var parent = entry.ParentProcessId == 0 ? null : unchecked((int)entry.ParentProcessId);
+                int? parent = entry.ParentProcessId == 0 ? null : unchecked((int)entry.ParentProcessId);
                 if (pid > 0) result[pid] = parent;
                 entry.Size = (uint)Marshal.SizeOf<ProcessEntry32>();
             }
