@@ -14,7 +14,8 @@ internal static class TaskV81AdminContract
         Require(xml.Contains("requireAdministrator"), "manifest 必须强制 requireAdministrator。");
 
         var csproj = File.ReadAllText(Path.Combine(root, "CodexDoctor.Native.csproj"));
-        foreach (var token in new[] { "<Version>8.1.0</Version>", "<Company>Aix</Company>", "<Authors>Aix</Authors>" })
+        Require(csproj.Contains("<Version>8.1."), "V8.1 系列项目版本必须保持在 8.1.x。");
+        foreach (var token in new[] { "<Company>Aix</Company>", "<Authors>Aix</Authors>" })
             Require(csproj.Contains(token), $"缺少产品元数据：{token}");
 
         var program = File.ReadAllText(Path.Combine(root, "Program.cs"));
