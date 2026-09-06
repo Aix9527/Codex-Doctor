@@ -1,6 +1,4 @@
 using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 
 namespace CodexDoctor.Native;
 
@@ -29,6 +27,7 @@ public sealed class MainForm : Form
 
     private CodexHealthScanResult? _lastScan;
     private RepairAndRescanResult? _lastRepair;
+    private RepairPlan? _lastRepairPlan;
     private bool _busy;
 
     public MainForm()
@@ -192,6 +191,7 @@ public sealed class MainForm : Form
 
             _lastScan = await _healthScanner.ScanAsync(progress);
             _lastRepair = null;
+            _lastRepairPlan = null;
             RenderScan(_lastScan);
             WriteLog($"扫描完成：ScanId={_lastScan.ScanId}；发现 {_lastScan.Issues.Count} 项检查结果。");
         }
@@ -371,6 +371,7 @@ public sealed class MainForm : Form
         if (MessageBox.Show(confirm, "确认一键修复", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
 
+        _lastRepairPlan = plan;
         SetBusy(true);
         try
         {
@@ -502,16 +503,10 @@ public sealed class MainForm : Form
         try
         {
             var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexDoctorV8", "reports");
-            Directory.CreateDirectory(root);
             var file = Path.Combine(root, $"CodexDoctor-V8.1-Report-{DateTime.Now:yyyyMMdd-HHmmss}.json");
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-            object payload = _lastRepair is null ? _lastScan : _lastRepair;
-            File.WriteAllText(file, JsonSerializer.Serialize(payload, options), new UTF8Encoding(false));
-            WriteLog("完整报告已导出：" + file);
+            var exporter = new HealthReportExporter();
+            exporter.Export(file, _lastScan, _lastRepair, _lastRepairPlan);
+            WriteLog("隐私安全完整报告已导出：" + file);
             MessageBox.Show(file, "报告已导出", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "导出失败", MessageBoxButtons.OK, MessageBoxIcon.Error); }
