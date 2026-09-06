@@ -42,7 +42,7 @@ public sealed class HealthReportExporter
 
         var payload = new
         {
-            版本 = "8.1.0",
+            版本 = "8.1.2",
             软件作者 = "Aix",
             生成时间 = DateTimeOffset.Now,
             管理员权限 = _isAdministrator(),
