@@ -69,7 +69,7 @@ public sealed class RepairService
     public string RunCodexDoctor(string cliPath)
     {
         if (string.IsNullOrWhiteSpace(cliPath) || !File.Exists(cliPath))
-            throw new InvalidOperationException("未找到可用的 Codex CLI。请先执行“扫描本机 Codex”。");
+            throw new InvalidOperationException("未找到可用的 Codex CLI。请先执行“一键扫描 Codex”。");
 
         var extension = Path.GetExtension(cliPath);
         if (extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase) || extension.Equals(".bat", StringComparison.OrdinalIgnoreCase))
@@ -88,10 +88,24 @@ public sealed class RepairService
         return RunCodexDoctor(discovery.Cli.Path);
     }
 
+    public void StartCodexDesktop(string executablePath)
+    {
+        if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+            throw new InvalidOperationException("未找到可启动的 Codex/ChatGPT Desktop 程序。请先执行“一键扫描 Codex”。");
+        try
+        {
+            Process.Start(new ProcessStartInfo(executablePath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("已找到 Codex Desktop，但启动失败：" + ex.Message, ex);
+        }
+    }
+
     public void RestartCodexDesktop(string executablePath, IReadOnlyCollection<int> processIds)
     {
         if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
-            throw new InvalidOperationException("未找到可启动的 Codex/ChatGPT Desktop 程序。请先执行“扫描本机 Codex”。");
+            throw new InvalidOperationException("未找到可启动的 Codex/ChatGPT Desktop 程序。请先执行“一键扫描 Codex”。");
 
         foreach (var id in processIds.Distinct())
         {
@@ -108,25 +122,15 @@ public sealed class RepairService
         }
 
         Thread.Sleep(300);
-        try
-        {
-            Process.Start(new ProcessStartInfo(executablePath) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException("已找到 Codex Desktop，但重新启动失败：" + ex.Message, ex);
-        }
+        StartCodexDesktop(executablePath);
     }
 
     public void RestartCodexDesktop()
     {
         var discovery = new CodexDiscoveryService(_userProfile).ScanAsync().GetAwaiter().GetResult();
-        var desktop = discovery.DesktopClients
-            .OrderByDescending(x => x.IsRunning)
-            .ThenByDescending(x => x.ProcessIds.Count)
-            .FirstOrDefault();
+        var desktop = CodexDesktopSelector.SelectPreferred(discovery.DesktopClients);
         if (desktop is null)
-            throw new InvalidOperationException("未检测到 Codex/ChatGPT Desktop。请先执行“扫描本机 Codex”。");
+            throw new InvalidOperationException("未检测到 Codex/ChatGPT Desktop。请先执行“一键扫描 Codex”。");
         RestartCodexDesktop(desktop.ExecutablePath, desktop.ProcessIds);
     }
 

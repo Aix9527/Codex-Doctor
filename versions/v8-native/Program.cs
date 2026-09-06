@@ -6,6 +6,7 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
+        if (!AdminGuard.EnsureAdministratorOrExit()) return;
         Application.Run(new MainForm());
     }
 }

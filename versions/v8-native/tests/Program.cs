@@ -137,33 +137,35 @@ Assert(File.ReadAllText(languageConfig).Contains("language=en-US"), "不可信�
 Assert(!File.Exists(languageBackup), "未执行语言写入时不应生成伪备份。");
 Directory.Delete(languageTemp, true);
 
-// Task 5：GUI 必须包含完整本机扫描/中文设置能力，并复用发现结果。
+// Task 5 / V8.1：详细扫描页能力继续保留，主界面改为统一健康扫描事实源。
 var mainForm = File.ReadAllText(Path.Combine(sourceRoot.FullName, "MainForm.cs"));
 var discoveryFormPath = Path.Combine(sourceRoot.FullName, "CodexDiscoveryForm.cs");
 Assert(File.Exists(discoveryFormPath), "必须存在 CodexDiscoveryForm.cs。");
 var discoveryForm = File.ReadAllText(discoveryFormPath);
-foreach (var phrase in new[] { "扫描本机 Codex", "一键设置 Codex 为简体中文", "恢复原语言", "当前界面语言", "回答语言偏好", "CLI 输出偏好", "打开安装目录", "打开 .codex 目录", "复制扫描摘要", "导出扫描报告" })
-    Assert((mainForm + "\n" + discoveryForm).Contains(phrase), $"缺少 V8.0.1 GUI 文案：{phrase}");
-Assert(mainForm.Contains("RunCodexDoctor(_lastDiscovery.Cli.Path"), "主界面 doctor 必须复用扫描到的 CLI 路径。");
+foreach (var phrase in new[] { "一键扫描 Codex", "恢复原语言", "当前界面语言", "回答语言偏好", "CLI 输出偏好", "打开安装目录", "打开 .codex 目录", "复制扫描摘要", "导出扫描报告" })
+    Assert((mainForm + "\n" + discoveryForm).Contains(phrase), $"缺少 V8.1 GUI 文案：{phrase}");
+Assert(mainForm.Contains("_lastScan"), "V8.1 主界面必须保存统一健康扫描结果。");
 Assert(mainForm.Contains("RestartCodexDesktop(desktop.ExecutablePath, desktop.ProcessIds)"), "主界面重启必须复用扫描到的 Desktop 路径。");
+Assert(repairSource.Contains("return RunCodexDoctor(discovery.Cli.Path)"), "doctor 自动入口必须复用发现到的 CLI 路径。");
 
-// 全中文 GUI 基础文案合同。
-foreach (var phrase in new[] { "一键诊断", "修复建议项", "重启 Codex", "迁移 .codex", "恢复 .codex", "导出报告", "诊断失败", "修复失败", "有冲突", "无冲突" })
-    Assert(mainForm.Contains(phrase), $"缺少中文 GUI 文案：{phrase}");
-Assert(mainForm.Contains("UnsafeRelaxedJsonEscaping"), "导出报告必须配置直接可读的中文 JSON 编码。");
+// V8.1 全中文主界面基础文案合同。
+foreach (var phrase in new[] { "一键扫描 Codex", "启动 Codex", "重启 Codex", "一键修复", "智能迁移/恢复", "一键中文", "导出完整报告", "扫描失败", "修复失败" })
+    Assert(mainForm.Contains(phrase), $"缺少 V8.1 中文 GUI 文案：{phrase}");
+var healthReportExporter = File.ReadAllText(Path.Combine(sourceRoot.FullName, "HealthReportExporter.cs"));
+Assert(healthReportExporter.Contains("UnsafeRelaxedJsonEscaping"), "导出报告必须配置直接可读的中文 JSON 编码。");
 
-// Task 6：发布文档和工作流合同。
+// 历史 V8.0.1 发布文档和工作流必须继续存在且不可被前向版本覆盖。
 var repoRoot = sourceRoot.Parent!.Parent!;
 var readme = File.ReadAllText(Path.Combine(sourceRoot.FullName, "README.md"));
 var releaseNotesPath = Path.Combine(repoRoot.FullName, "RELEASE_NOTES_V8.0.1.md");
 var releaseWorkflowPath = Path.Combine(repoRoot.FullName, ".github", "workflows", "release-v8.0.1.yml");
-Assert(File.Exists(releaseNotesPath), "必须存在 V8.0.1 发布说明。");
-Assert(File.Exists(releaseWorkflowPath), "必须存在 V8.0.1 发布工作流。");
+Assert(File.Exists(releaseNotesPath), "必须继续保留 V8.0.1 发布说明。");
+Assert(File.Exists(releaseWorkflowPath), "必须继续保留 V8.0.1 发布工作流。");
 var releaseNotes = File.ReadAllText(releaseNotesPath);
 foreach (var phrase in new[] { "只读", "敏感", "Desktop", "CLI", "MSIX" })
     Assert((readme + "\n" + releaseNotes).Contains(phrase, StringComparison.OrdinalIgnoreCase), $"V8.0.1 文档缺少安全/客户端边界说明：{phrase}");
 var releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
-Assert(releaseWorkflow.Contains("v8.0.1"), "发布工作流必须绑定 v8.0.1。");
+Assert(releaseWorkflow.Contains("v8.0.1"), "历史发布工作流必须绑定 v8.0.1。");
 Assert(releaseWorkflow.Contains("PublishSingleFile=true"), "发布工作流必须保持单文件发布。");
 Assert(releaseWorkflow.Contains("IncludeNativeLibrariesForSelfExtract=true"), "发布工作流必须打包原生库。");
 

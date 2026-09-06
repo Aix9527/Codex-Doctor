@@ -1,5 +1,21 @@
 # Changelog
 
+## V8.1.0 原生维修中心
+- 强制 Windows `requireAdministrator` / UAC 启动门，产品版本固定为 8.1.0
+- 首页升级为“先扫描 → 问题分级 → 一键修复 → 自动复检”的维修中心
+- 新增统一异步健康扫描编排，单项检查失败不会终止后续检查
+- 支持 Critical / Urgent / Warning / Info / Ok 多问题并存与稳定排序
+- 新增 RepairPlan、自动修复白名单、执行后验证、按动作回滚和修复后全量复检
+- Git/npm 代理冲突、Codex 专用代理、语言等安全动作纳入统一修复编排
+- Desktop 自动选择、真实 EXE 路径启动/重启，不依赖 `chatgpt:` URL 协议
+- `.codex` 智能迁移/恢复升级为普通目录、有效 Junction、可恢复中断事务、歧义状态四类决策
+- 一键中文增加“已是中文 / 可自动设置 / 需要用户操作”三态，不修改未知数据库、MSIX/AppX 或二进制资源
+- 主界面提供启动、重启、一键修复、智能迁移/恢复、一键中文、导出完整报告六个主要操作
+- 新增隐私安全 `HealthReportExporter`，报告记录 RepairPlan、验证/回滚、修复前后 ScanId，并将用户目录标准化为 `%USERPROFILE%`
+- 健康报告对 Key/Token/Secret/Password/Cookie/Auth/Session/Bearer 等敏感内容脱敏
+- GUI 公开显示软件作者 Aix / QQ / 抖音；健康报告只记录 `软件作者=Aix`
+- Windows CI 强化管理员 manifest、8.1.0 版本、PE MZ、真正单文件、无 PowerShell/外置 DLL 和 SHA256 门禁
+
 ## V8 Native
 - 使用 C# + .NET 8 + WinForms 原生重写，不再通过 PowerShell 启动器运行主程序
 - 正式目标为 `win-x64`、self-contained、single-file 的 `CodexDoctor.exe`

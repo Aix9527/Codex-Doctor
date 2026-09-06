@@ -82,4 +82,12 @@ public sealed record CodexDiscoveryResult(
     [property: JsonPropertyName("CodexCLI")] CodexCliInfo Cli,
     [property: JsonPropertyName("数据目录")] CodexDataDirectoryInfo DataDirectory,
     [property: JsonPropertyName("配置文件")] IReadOnlyList<CodexConfigFileInfo> ConfigFiles,
-    [property: JsonPropertyName("语言状态")] CodexLanguageState LanguageState);
+    [property: JsonPropertyName("语言状态")] CodexLanguageState LanguageState)
+{
+    public static CodexDiscoveryResult Empty() => new(
+        [],
+        new CodexCliInfo(false, null, false, null, false),
+        new CodexDataDirectoryInfo(string.Empty, false, false, null, 0, 0),
+        [],
+        new CodexLanguageState("未知", "未知", "未知", false, true, "尚未扫描"));
+}
