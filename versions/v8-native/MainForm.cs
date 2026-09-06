@@ -503,7 +503,6 @@ public sealed class MainForm : Form
         try
         {
             var options = ReportSaveDefaults.Create(DateTime.Now);
-            Directory.CreateDirectory(options.InitialDirectory);
             using var dialog = new SaveFileDialog
             {
                 Title = "导出完整报告",
