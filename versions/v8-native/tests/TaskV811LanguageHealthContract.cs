@@ -27,8 +27,13 @@ internal static class TaskV811LanguageHealthContract
         };
 
         var service = new CodexLanguageService();
-        var switchable = (CodexIssue?)method.Invoke(null, [service, withDesktop])
+        var rawWithDesktop = (CodexIssue?)method.Invoke(null, [service, withDesktop])
             ?? throw new Exception("CheckLanguage 未返回问题状态。");
+
+        var switchable = CodexIssueClassifier.SortIssues([
+            CodexIssue.ForTest("desktop-install", CodexIssueSeverity.Ok),
+            rawWithDesktop
+        ]).Single(x => x.Category == "language");
 
         Require(switchable.Severity == CodexIssueSeverity.Info, "未验证的语言切换能力只能是提示级别。 ");
         Require(switchable.Status != CodexIssueStatus.ManualRequired, "已发现 Desktop 时不得继续显示为只能人工处理。 ");
@@ -37,8 +42,13 @@ internal static class TaskV811LanguageHealthContract
         Require(switchable.SummaryZh.Contains("验证", StringComparison.Ordinal), "语言健康项必须明确切换后需要验证。 ");
         Require(!switchable.AutoRepairable, "UI Automation 尝试不得伪装成一键修复白名单动作。 ");
 
-        var withoutDesktop = (CodexIssue?)method.Invoke(null, [service, CodexDiscoveryResult.Empty()])
+        var rawWithoutDesktop = (CodexIssue?)method.Invoke(null, [service, CodexDiscoveryResult.Empty()])
             ?? throw new Exception("CheckLanguage 未返回无 Desktop 状态。");
+        var withoutDesktop = CodexIssueClassifier.SortIssues([
+            CodexIssue.ForTest("desktop-missing", CodexIssueSeverity.Critical),
+            rawWithoutDesktop
+        ]).Single(x => x.Category == "language");
+
         Require(withoutDesktop.Status == CodexIssueStatus.NotApplicable, "未发现 Desktop 时语言切换应标记为不适用。 ");
         Require(withoutDesktop.TitleZh.Contains("未发现 Desktop", StringComparison.Ordinal), "未发现 Desktop 时必须给出准确原因。 ");
     }
