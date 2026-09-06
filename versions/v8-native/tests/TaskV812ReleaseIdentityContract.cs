@@ -46,7 +46,7 @@ internal static class TaskV812ReleaseIdentityContract
         var workflowPath = Path.Combine(repoRoot.FullName, ".github", "workflows", "release-v8.1.2.yml");
         Require(File.Exists(workflowPath), "必须新增 release-v8.1.2.yml。");
         var workflow = File.ReadAllText(workflowPath);
-        foreach (var token in new[] { "v8.1.2", "<Version>8\\.1\\.2</Version>", "PublishSingleFile=true", "IncludeNativeLibrariesForSelfExtract=true", "CodexDoctor.exe", "CodexDoctor.exe.sha256", "RELEASE_NOTES_V8.1.2.md" })
+        foreach (var token in new[] { "v8.1.2", "<Version>8\.1\.2</Version>", "PublishSingleFile=true", "IncludeNativeLibrariesForSelfExtract=true", "CodexDoctor.exe", "CodexDoctor.exe.sha256", "RELEASE_NOTES_V8.1.2.md" })
             Require(workflow.Contains(token, StringComparison.Ordinal), $"V8.1.2 发布工作流缺少：{token}");
         Require(workflow.Contains("branches: [main]", StringComparison.Ordinal), "V8.1.2 发布工作流必须监听 main。");
         Require(!workflow.Contains("--clobber", StringComparison.Ordinal), "V8.1.2 Release 已存在时不得覆盖既有资产。");
