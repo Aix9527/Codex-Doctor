@@ -151,7 +151,8 @@ Assert(repairSource.Contains("return RunCodexDoctor(discovery.Cli.Path)"), "doct
 // V8.1 全中文主界面基础文案合同。
 foreach (var phrase in new[] { "一键扫描 Codex", "启动 Codex", "重启 Codex", "一键修复", "智能迁移/恢复", "一键中文", "导出完整报告", "扫描失败", "修复失败" })
     Assert(mainForm.Contains(phrase), $"缺少 V8.1 中文 GUI 文案：{phrase}");
-Assert(mainForm.Contains("UnsafeRelaxedJsonEscaping"), "导出报告必须配置直接可读的中文 JSON 编码。");
+var healthReportExporter = File.ReadAllText(Path.Combine(sourceRoot.FullName, "HealthReportExporter.cs"));
+Assert(healthReportExporter.Contains("UnsafeRelaxedJsonEscaping"), "导出报告必须配置直接可读的中文 JSON 编码。");
 
 // 历史 V8.0.1 发布文档和工作流必须继续存在且不可被前向版本覆盖。
 var repoRoot = sourceRoot.Parent!.Parent!;
