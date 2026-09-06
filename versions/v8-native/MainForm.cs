@@ -502,10 +502,24 @@ public sealed class MainForm : Form
         if (_lastScan is null) return;
         try
         {
-            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexDoctorV8", "reports");
-            var file = Path.Combine(root, $"CodexDoctor-V8.1-Report-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+            var options = ReportSaveDefaults.Create(DateTime.Now);
+            Directory.CreateDirectory(options.InitialDirectory);
+            using var dialog = new SaveFileDialog
+            {
+                Title = "导出完整报告",
+                InitialDirectory = options.InitialDirectory,
+                FileName = options.FileName,
+                Filter = options.Filter,
+                DefaultExt = options.DefaultExt,
+                AddExtension = true,
+                OverwritePrompt = true,
+                CheckPathExists = true
+            };
+
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
             var exporter = new HealthReportExporter();
-            exporter.Export(file, _lastScan, _lastRepair, _lastRepairPlan);
+            var file = exporter.Export(dialog.FileName, _lastScan, _lastRepair, _lastRepairPlan);
             WriteLog("隐私安全完整报告已导出：" + file);
             MessageBox.Show(file, "报告已导出", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
