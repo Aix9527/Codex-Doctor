@@ -14,6 +14,12 @@ public sealed class RepairActionCatalog
             if (action.ActionId.Equals("windows.user.proxy.write", StringComparison.OrdinalIgnoreCase))
                 continue;
             map[action.ActionId] = action;
+
+            // 健康扫描器使用稳定的问题->动作合同 ID；底层动作保留自身实现 ID。
+            if (action.ActionId.Equals("git.proxy.clear", StringComparison.OrdinalIgnoreCase))
+                map["git.proxy.cleanup"] = action;
+            else if (action.ActionId.Equals("npm.proxy.clear", StringComparison.OrdinalIgnoreCase))
+                map["npm.proxy.cleanup"] = action;
         }
         _actions = map;
     }
