@@ -33,6 +33,14 @@ internal static class TaskV812ReportSaveContract
             "报告另存为窗口必须设置默认文件名。");
         Require(main.Contains("DialogResult.OK", StringComparison.Ordinal),
             "用户取消另存为时必须零写入；只有确认保存后才导出。");
+
+        var exportStart = main.IndexOf("private void ExportReport()", StringComparison.Ordinal);
+        var confirmSave = main.IndexOf("if (dialog.ShowDialog(this) != DialogResult.OK) return;", exportStart, StringComparison.Ordinal);
+        var createDirectory = main.IndexOf("Directory.CreateDirectory", exportStart, StringComparison.Ordinal);
+        Require(exportStart >= 0 && confirmSave > exportStart,
+            "必须能够定位报告导出确认边界。");
+        Require(createDirectory < 0 || createDirectory > confirmSave,
+            "用户确认保存之前不得创建目录或执行其它文件系统写入；取消另存为必须真正零写入。");
     }
 
     private static void Require(bool condition, string message)
