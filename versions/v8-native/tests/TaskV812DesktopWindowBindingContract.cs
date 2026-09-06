@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using CodexDoctor.Native;
+using static CodexDoctor.Native.Tests.V81TestSupport;
 
 namespace CodexDoctor.Native.Tests;
 
@@ -58,6 +59,12 @@ internal static class TaskV812DesktopWindowBindingContract
             [new DesktopWindowCandidate((nint)0x505, 100, false)],
             [new DesktopProcessSnapshot(100, null, @"C:\Apps\ChatGPT\ChatGPT.exe")]);
         Require(!hidden.Found, "不可见窗口不得作为语言 UI Automation 主窗口。");
+
+        var source = File.ReadAllText(Path.Combine(SourceRoot().FullName, "DesktopLanguageSwitchService.cs"));
+        Require(source.Contains("IDesktopWindowLocator", StringComparison.Ordinal),
+            "Windows UI Automation 语言后端必须通过可审计的 Desktop 窗口定位器绑定 HWND。");
+        Require(!source.Contains("process.MainWindowHandle", StringComparison.Ordinal),
+            "V8.1.2 语言后端不得继续只依赖 Process.MainWindowHandle。");
     }
 
     private static void Require(bool condition, string message)
