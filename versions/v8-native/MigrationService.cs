@@ -20,6 +20,52 @@ public sealed class MigrationService
         _stateFile = Path.Combine(root, "migration-state.json");
     }
 
+    public bool HasMigrationState => TryReadState() is not null;
+
+    public MigrationState? ReadMigrationState() => TryReadState();
+
+    public bool CanRecoverInterrupted()
+    {
+        var state = TryReadState();
+        if (state is null || !Directory.Exists(state.Target)) return false;
+
+        if (Directory.Exists(state.Source))
+        {
+            if (IsReparsePoint(state.Source)) return false;
+            try
+            {
+                if (Directory.EnumerateFileSystemEntries(state.Source).Any()) return false;
+            }
+            catch { return false; }
+        }
+
+        return true;
+    }
+
+    public MigrationState RecoverInterrupted()
+    {
+        var state = TryReadState() ?? throw new InvalidOperationException("没有找到可恢复的迁移状态。");
+        if (!CanRecoverInterrupted())
+            throw new InvalidOperationException("当前迁移状态无法证明可安全自动恢复，请查看详情后人工处理。");
+
+        var sourceExistedAsEmptyDirectory = Directory.Exists(state.Source);
+        if (sourceExistedAsEmptyDirectory) Directory.Delete(state.Source, false);
+
+        try
+        {
+            RunCmd($"mklink /J \"{state.Source}\" \"{state.Target}\"");
+            if (!Directory.Exists(state.Source) || !IsReparsePoint(state.Source))
+                throw new InvalidOperationException("恢复 Junction 后验证失败。");
+            return state;
+        }
+        catch
+        {
+            if (!Directory.Exists(state.Source) && sourceExistedAsEmptyDirectory)
+                Directory.CreateDirectory(state.Source);
+            throw;
+        }
+    }
+
     public MigrationState Migrate(string targetRoot)
     {
         if (string.IsNullOrWhiteSpace(targetRoot)) throw new InvalidOperationException("迁移目标不能为空。");
@@ -51,14 +97,25 @@ public sealed class MigrationService
 
     public void Restore()
     {
-        if (!File.Exists(_stateFile)) throw new InvalidOperationException("没有找到可恢复的迁移状态。");
-        var state = JsonSerializer.Deserialize<MigrationState>(File.ReadAllText(_stateFile)) ?? throw new InvalidOperationException("迁移状态文件无效。");
+        var state = TryReadState() ?? throw new InvalidOperationException("没有找到可恢复的迁移状态。");
         if (!Directory.Exists(state.Source) || !IsReparsePoint(state.Source)) throw new InvalidOperationException("源目录不是 Junction，为避免误删已拒绝恢复。");
         RunCmd($"rmdir \"{state.Source}\"");
         if (!string.IsNullOrWhiteSpace(state.Backup) && Directory.Exists(state.Backup)) Directory.Move(state.Backup, state.Source);
         else Directory.CreateDirectory(state.Source);
         if (Directory.Exists(state.Target)) CopyDirectory(state.Target, state.Source);
         File.Delete(_stateFile);
+    }
+
+    private MigrationState? TryReadState()
+    {
+        if (!File.Exists(_stateFile)) return null;
+        try
+        {
+            var state = JsonSerializer.Deserialize<MigrationState>(File.ReadAllText(_stateFile));
+            if (state is null || string.IsNullOrWhiteSpace(state.Source) || string.IsNullOrWhiteSpace(state.Target)) return null;
+            return state;
+        }
+        catch { return null; }
     }
 
     private static bool IsReparsePoint(string path) => (new DirectoryInfo(path).Attributes & FileAttributes.ReparsePoint) != 0;
