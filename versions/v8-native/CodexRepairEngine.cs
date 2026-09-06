@@ -3,10 +3,12 @@ namespace CodexDoctor.Native;
 public sealed class CodexRepairEngine
 {
     private readonly RepairActionCatalog _catalog;
+    private readonly IHealthScanner? _scanner;
 
-    public CodexRepairEngine(RepairActionCatalog catalog)
+    public CodexRepairEngine(RepairActionCatalog catalog, IHealthScanner? scanner = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+        _scanner = scanner;
     }
 
     public RepairPlan BuildPlan(CodexHealthScanResult scan)
@@ -105,5 +107,20 @@ public sealed class CodexRepairEngine
         }
 
         return new RepairSessionResult(plan.PlanId, results);
+    }
+
+    public async Task<RepairAndRescanResult> ExecuteAndRescanAsync(
+        RepairPlan plan,
+        CodexHealthScanResult beforeScan,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(beforeScan);
+        if (_scanner is null) throw new InvalidOperationException("未配置修复后复检扫描器。");
+        if (plan.SourceScanId != beforeScan.ScanId) throw new InvalidOperationException("RepairPlan 与修复前扫描不匹配，已拒绝执行。");
+
+        var repair = await ExecuteAsync(plan, cancellationToken).ConfigureAwait(false);
+        var after = await _scanner.ScanAsync(null, cancellationToken).ConfigureAwait(false);
+        return new RepairAndRescanResult(beforeScan, repair, after);
     }
 }
