@@ -31,6 +31,29 @@ internal static class TaskV81ScannerContract
         Require(progress.Count == checks.Length, "每个扫描阶段必须报告一次完成进度。");
         Require(progress[^1].Completed == checks.Length && progress[^1].Total == checks.Length, "最终扫描进度计数不正确。");
         Require(result.ScanId != Guid.Empty, "统一扫描必须生成 ScanId。");
+
+        var snapshotCounter = 0;
+        Task<CodexDiscoveryResult> NextDiscovery()
+        {
+            snapshotCounter++;
+            var empty = CodexDiscoveryResult.Empty();
+            return Task.FromResult(empty with
+            {
+                LanguageState = empty.LanguageState with { MethodZh = $"snapshot-{snapshotCounter}" }
+            });
+        }
+
+        var rescanScanner = new CodexHealthScanner(
+            NextDiscovery,
+            () => Task.FromResult<DiagnosisResult?>(null),
+            (_, _) => [new FakeCheck("snapshot", [CodexIssue.ForTest("snapshot-ok", CodexIssueSeverity.Ok)])]);
+
+        var first = await rescanScanner.ScanAsync();
+        var second = await rescanScanner.ScanAsync();
+
+        Require(first.Discovery.LanguageState.MethodZh == "snapshot-1", "第一次扫描必须使用第一次实时 Discovery 快照。");
+        Require(second.Discovery.LanguageState.MethodZh == "snapshot-2", "修复后复检必须重新获取 Discovery 快照，不能复用第一次 Lazy 结果。");
+        Require(snapshotCounter == 2, "同一个健康扫描器连续扫描两次时必须调用 Discovery provider 两次。");
     }
 
     private sealed class FakeCheck(string id, IReadOnlyList<CodexIssue> issues) : IHealthCheck
