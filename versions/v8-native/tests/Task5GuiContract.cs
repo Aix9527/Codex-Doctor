@@ -13,13 +13,13 @@ internal static class Task5GuiContract
 
         var mainPath = Path.Combine(sourceRoot.FullName, "MainForm.cs");
         var discoveryFormPath = Path.Combine(sourceRoot.FullName, "CodexDiscoveryForm.cs");
-        Require(File.Exists(discoveryFormPath), "必须新增 CodexDiscoveryForm.cs。");
+        var repairServicePath = Path.Combine(sourceRoot.FullName, "RepairService.cs");
+        Require(File.Exists(discoveryFormPath), "必须保留 CodexDiscoveryForm.cs 详细扫描页。");
 
         var all = File.ReadAllText(mainPath) + "\n" + File.ReadAllText(discoveryFormPath);
         foreach (var phrase in new[]
         {
-            "扫描本机 Codex",
-            "一键设置 Codex 为简体中文",
+            "一键扫描 Codex",
             "恢复原语言",
             "当前界面语言",
             "回答语言偏好",
@@ -32,9 +32,12 @@ internal static class Task5GuiContract
             Require(all.Contains(phrase), $"GUI 缺少功能文案：{phrase}");
 
         var main = File.ReadAllText(mainPath);
-        Require(main.Contains("_lastDiscovery"), "MainForm 必须保存最近一次 Codex 扫描结果。");
-        Require(main.Contains("RunCodexDoctor(_lastDiscovery.Cli.Path"), "运行 doctor 必须复用扫描到的 CLI 真实路径。");
+        Require(main.Contains("_lastScan"), "V8.1 MainForm 必须以统一健康扫描结果作为最近状态事实源。");
         Require(main.Contains("RestartCodexDesktop(desktop.ExecutablePath, desktop.ProcessIds"), "重启必须复用扫描到的 Desktop 真实路径和 PID。");
+
+        var repairService = File.ReadAllText(repairServicePath);
+        Require(repairService.Contains("RunCodexDoctor(string cliPath)"), "必须继续保留基于显式 CLI 路径的 codex doctor 能力。");
+        Require(repairService.Contains("return RunCodexDoctor(discovery.Cli.Path)"), "doctor 自动入口必须复用扫描到的 CLI 真实路径。");
     }
 
     private static void Require(bool condition, string message)
