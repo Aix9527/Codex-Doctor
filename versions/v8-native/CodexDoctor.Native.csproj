@@ -8,7 +8,7 @@
     <AssemblyName>CodexDoctor</AssemblyName>
     <RootNamespace>CodexDoctor.Native</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>8.1.1</Version>
+    <Version>8.1.2</Version>
     <Product>Codex Doctor</Product>
     <Company>Aix</Company>
     <Authors>Aix</Authors>
