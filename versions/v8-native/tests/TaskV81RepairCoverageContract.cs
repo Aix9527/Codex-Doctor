@@ -56,6 +56,20 @@ internal static class TaskV81RepairCoverageContract
         await language.RollbackAsync(langExec, CancellationToken.None);
         Require(File.ReadAllText(config).Contains("en-US"), "语言回滚必须恢复原语言。");
 
+        var unsafeMigration = new FakeMigrationRecoveryBackend(canRecover: false);
+        var rejected = false;
+        try { _ = new MigrationRecoveryRepairAction(unsafeMigration, temp); }
+        catch (InvalidOperationException) { rejected = true; }
+        Require(rejected, "无法证明安全恢复条件时，不得创建自动迁移恢复动作。");
+
+        var safeMigration = new FakeMigrationRecoveryBackend(canRecover: true);
+        var migration = new MigrationRecoveryRepairAction(safeMigration, temp);
+        var migrationExec = await migration.ExecuteAsync(CancellationToken.None);
+        Require(safeMigration.RecoverCalls == 1, "安全迁移恢复动作必须执行一次恢复事务。");
+        Require(await migration.VerifyAsync(migrationExec, CancellationToken.None), "迁移恢复必须执行后验证。");
+        await migration.RollbackAsync(migrationExec, CancellationToken.None);
+        Require(safeMigration.RestoreCalls == 1, "迁移恢复回滚必须恢复事务前状态。");
+
         Directory.Delete(temp, true);
     }
 
@@ -72,5 +86,17 @@ internal static class TaskV81RepairCoverageContract
         public int RestartCalls { get; private set; }
         public void Restart(string executablePath, IReadOnlyCollection<int> processIds) => RestartCalls++;
         public bool IsRunning(string executablePath) => RestartCalls > 0;
+    }
+
+    private sealed class FakeMigrationRecoveryBackend(bool canRecover) : IMigrationRecoveryBackend
+    {
+        private readonly bool _canRecover = canRecover;
+        public int RecoverCalls { get; private set; }
+        public int RestoreCalls { get; private set; }
+        public bool CanRecover() => _canRecover;
+        public MigrationRecoverySnapshot Capture() => new(@"C:\Users\X\.codex", @"D:\Codex\.codex", @"C:\Users\X\.codex.pre-migrate");
+        public void Recover(MigrationRecoverySnapshot snapshot) => RecoverCalls++;
+        public bool VerifyRecovered(MigrationRecoverySnapshot snapshot) => RecoverCalls == 1;
+        public void Restore(MigrationRecoverySnapshot snapshot) => RestoreCalls++;
     }
 }
