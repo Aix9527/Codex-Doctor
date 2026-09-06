@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -257,15 +256,44 @@ public sealed class MainForm : Form
         _languageButton.Enabled = !_busy && _lastScan is not null;
         _reportButton.Enabled = !_busy && state.CanExportReport;
         _repairButton.Text = state.RepairableCount > 0 ? $"一键修复 ({state.RepairableCount})" : "一键修复";
-        _migrationButton.Text = state.MigrationActionZh;
-        _languageButton.Text = state.LanguageActionZh;
+
+        if (_lastScan is null)
+        {
+            _migrationButton.Text = state.MigrationActionZh;
+            _languageButton.Text = state.LanguageActionZh;
+        }
+        else
+        {
+            _migrationButton.Text = CurrentMigrationDecision().ActionZh;
+            _languageButton.Text = CurrentLanguageDecision().ActionZh;
+        }
     }
 
     private CodexDesktopInstallationInfo? PreferredDesktop()
-        => _lastScan?.Discovery.DesktopClients
-            .OrderByDescending(x => x.IsRunning)
-            .ThenByDescending(x => x.ProcessIds.Count)
-            .FirstOrDefault(x => File.Exists(x.ExecutablePath));
+    {
+        var candidates = _lastScan?.Discovery.DesktopClients
+            .Where(x => File.Exists(x.ExecutablePath))
+            .ToArray() ?? [];
+        return CodexDesktopSelector.SelectPreferred(candidates);
+    }
+
+    private MigrationActionDecision CurrentMigrationDecision()
+    {
+        if (_lastScan is null)
+            return new MigrationActionDecision(MigrationActionKind.ViewDetails, "智能迁移/恢复", false, "请先扫描 Codex。");
+        return MigrationActionResolver.Resolve(
+            _lastScan.Discovery.DataDirectory,
+            _migration.HasMigrationState,
+            _migration.CanRecoverInterrupted());
+    }
+
+    private LanguageActionDecision CurrentLanguageDecision()
+    {
+        if (_lastScan is null)
+            return new LanguageActionDecision("一键中文", false, false, true, "请先扫描 Codex。");
+        var detected = _language.Detect(_lastScan.Discovery);
+        return LanguageActionResolver.Resolve(detected);
+    }
 
     private async Task StartCodexAsync()
     {
@@ -278,7 +306,7 @@ public sealed class MainForm : Form
 
         try
         {
-            Process.Start(new ProcessStartInfo(desktop.ExecutablePath) { UseShellExecute = true });
+            _repair.StartCodexDesktop(desktop.ExecutablePath);
             WriteLog("已通过扫描确认的实际路径启动 Codex：" + desktop.ExecutablePath);
             await Task.Delay(500);
         }
@@ -314,8 +342,7 @@ public sealed class MainForm : Form
 
     private async Task RepairAllAsync()
     {
-        if (_lastScan is null) return;
-        if (_busy) return;
+        if (_lastScan is null || _busy) return;
 
         var actions = new List<IRepairAction>();
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -326,8 +353,8 @@ public sealed class MainForm : Form
         actions.Add(new GitProxyRepairAction(new GitProxyToolBackend(), backupRoot));
         actions.Add(new NpmProxyRepairAction(new NpmProxyToolBackend(), backupRoot));
 
-        var languageState = _language.Detect(_lastScan.Discovery);
-        if (!languageState.NeedsUserAction)
+        var languageDecision = CurrentLanguageDecision();
+        if (languageDecision.CanApply)
             actions.Add(new LanguageRepairAction(_language, _lastScan.Discovery));
 
         var scannerAdapter = new CodexHealthScannerAdapter(_healthScanner);
@@ -370,19 +397,56 @@ public sealed class MainForm : Form
     private async Task SmartMigrationAsync()
     {
         if (_lastScan is null) return;
-        var data = _lastScan.Discovery.DataDirectory;
+        var decision = MigrationActionResolver.Resolve(
+            _lastScan.Discovery.DataDirectory,
+            _migration.HasMigrationState,
+            _migration.CanRecoverInterrupted());
 
-        if (data.Exists && data.IsReparsePoint)
+        if (decision.Kind == MigrationActionKind.ViewDetails)
         {
-            if (MessageBox.Show("检测到 .codex 为 Junction。将按可验证的迁移状态尝试恢复原目录。是否继续？", "确认恢复 .codex", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+            var state = _migration.ReadMigrationState();
+            var details = new StringBuilder()
+                .AppendLine(decision.ExplanationZh)
+                .AppendLine()
+                .AppendLine("当前 .codex：" + _lastScan.Discovery.DataDirectory.Path)
+                .AppendLine("链接目标：" + (_lastScan.Discovery.DataDirectory.LinkTarget ?? "无/未知"))
+                .AppendLine("迁移状态：" + (_migration.HasMigrationState ? "存在" : "不存在"));
+            if (state is not null)
+            {
+                details.AppendLine("状态源：" + state.Source)
+                    .AppendLine("状态目标：" + state.Target)
+                    .AppendLine("历史备份：" + (string.IsNullOrWhiteSpace(state.Backup) ? "无" : state.Backup));
+            }
+            details.AppendLine().Append("为避免误删或覆盖，当前状态不会自动执行迁移/恢复。");
+            MessageBox.Show(details.ToString(), "迁移详情", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (decision.Kind == MigrationActionKind.Restore)
+        {
+            if (MessageBox.Show("检测到有效 .codex Junction 和可审计迁移状态。将恢复为普通目录并保留目标数据副本。是否继续？", "确认恢复 .codex", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
                 return;
             try
             {
                 _migration.Restore();
-                WriteLog(".codex 已恢复。");
+                WriteLog(".codex 已恢复为普通目录。");
                 await ScanAsync();
             }
             catch (Exception ex) { MessageBox.Show(ex.Message, "恢复失败", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            return;
+        }
+
+        if (decision.Kind == MigrationActionKind.Recover)
+        {
+            if (MessageBox.Show("检测到可证明安全恢复的中断迁移事务。将按状态文件重建 Junction，不会覆盖非空普通目录。是否继续？", "确认恢复迁移事务", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+            try
+            {
+                var state = _migration.RecoverInterrupted();
+                WriteLog($"已恢复中断迁移事务：{state.Source} → {state.Target}");
+                await ScanAsync();
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message, "迁移事务恢复失败", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             return;
         }
 
@@ -392,7 +456,7 @@ public sealed class MainForm : Form
             MessageBox.Show("请先填写迁移目标，例如 D:\\Codex。", "需要迁移目标", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        if (MessageBox.Show($"准备把 .codex 安全迁移到：\n{target}\n\n将复制、备份并创建 Junction。是否继续？", "确认迁移 .codex", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+        if (MessageBox.Show($"准备把 .codex 安全迁移到：\n{target}\n\n首次无历史目标时默认建议 D:\\Codex；本次将复制、备份并创建 Junction。是否继续？", "确认迁移 .codex", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
         try
         {
@@ -407,17 +471,21 @@ public sealed class MainForm : Form
     {
         if (_lastScan is null) return;
         var state = _language.Detect(_lastScan.Discovery);
-        if (state.Applied || state.UiLanguage.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
+        var decision = LanguageActionResolver.Resolve(state);
+
+        if (decision.AlreadyChinese)
         {
             MessageBox.Show("当前可信语言状态已经是简体中文。", "已是中文", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        if (state.NeedsUserAction)
+        if (decision.NeedsUserAction)
         {
-            MessageBox.Show(state.MethodZh + "\n\nCodex Doctor 不会修改未知内部数据库、MSIX/AppX 或二进制资源。", "需要用户操作", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(decision.ExplanationZh + "\n\nCodex Doctor 不会修改未知内部数据库、MSIX/AppX 或二进制资源。", "需要用户操作", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        if (MessageBox.Show("将通过经过批准的可逆语言适配器把 Codex 设置为简体中文。是否继续？", "确认一键中文", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+        if (!decision.CanApply) return;
+
+        if (MessageBox.Show("检测到经过批准的可逆语言适配器，可自动设置为简体中文。是否继续？", "确认一键中文", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             return;
         try
         {
