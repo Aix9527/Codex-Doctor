@@ -27,16 +27,17 @@ public sealed record MainDashboardState(
         }
 
         var issues = scan.Issues;
-        var hasDesktop = scan.Discovery.DesktopClients.Any(x => !string.IsNullOrWhiteSpace(x.ExecutablePath));
+        var hasDesktop = CodexDesktopSelector.SelectPreferred(scan.Discovery.DesktopClients) is not null;
         var repairable = issues.Count(x =>
             x.Status == CodexIssueStatus.Repairable &&
             x.AutoRepairable &&
             !string.IsNullOrWhiteSpace(x.RepairActionId));
 
-        var language = scan.Discovery.LanguageState;
-        var languageAction = language.Applied || language.UiLanguage.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)
-            ? "已是中文"
-            : language.NeedsUserAction ? "一键中文" : "一键中文";
+        var languageAction = LanguageActionResolver.Resolve(scan.Discovery.LanguageState).ActionZh;
+        var migrationAction = MigrationActionResolver.Resolve(
+            scan.Discovery.DataDirectory,
+            hasMigrationState: false,
+            canRecoverInterrupted: false).ActionZh;
 
         return new MainDashboardState(
             false,
@@ -50,7 +51,7 @@ public sealed record MainDashboardState(
             issues.Count(x => x.Severity == CodexIssueSeverity.Warning),
             issues.Count(x => x.Severity == CodexIssueSeverity.Info),
             issues.Count(x => x.Severity == CodexIssueSeverity.Ok),
-            "智能迁移/恢复",
+            migrationAction,
             languageAction);
     }
 }
