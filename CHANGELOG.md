@@ -1,5 +1,15 @@
 # Changelog
 
+## V8.1.2 Desktop 稳定性修复
+- 导出完整报告改用标准 Windows `SaveFileDialog`，允许自由选择保存目录；取消时零写入
+- Desktop 卸载前重新扫描真实客户端，根据已确认的 `ChatGPT.exe` / `Codex.exe` 动态选择 `ChatGPT` / `Codex` 精确 winget 名称，不再把固定 Microsoft Store 安装 ID 当成所有已安装客户端的卸载身份
+- Desktop 卸载仍只使用 winget，不直接删除应用目录；命令完成后重新扫描验证
+- 中文 / English UI Automation 新增多进程窗口绑定：扫描 PID → 可信进程树 → 完全相同 EXE 路径；拒绝无关窗口和不可见窗口
+- 语言后端不再只依赖 `Process.MainWindowHandle`
+- 健康报告内部版本升级为 8.1.2，主窗口、关于页和产品版本统一为 V8.1.2
+- V8.1.1 Release 工作流改为手动历史复现，并固定 checkout `v8.1.1`，避免 V8.1.2 合并时误触发旧版本门禁
+- 新增独立 `release-v8.1.2` 工作流，继续坚持单文件、自包含、管理员 manifest、无运行时 PowerShell/外置 DLL、SHA256 和既有 Release 不覆盖
+
 ## V8.1.1 双向语言与安装管理
 - 主界面将旧“一键中文”升级为 **中文 / English** 双向切换按钮，目标固定为 `zh-CN` / `en-US`
 - 语言切换优先可信 Desktop UI 适配器；无可信适配器时仅对扫描确认的 Desktop EXE/PID 尝试 Windows UI Automation
