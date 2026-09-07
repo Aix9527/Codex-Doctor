@@ -36,7 +36,8 @@ public sealed class HealthReportExporter
     public string BuildJson(
         CodexHealthScanResult currentScan,
         RepairAndRescanResult? repairAndRescan = null,
-        RepairPlan? repairPlan = null)
+        RepairPlan? repairPlan = null,
+        ReconnectingRecoveryResult? reconnectingRecovery = null)
     {
         ArgumentNullException.ThrowIfNull(currentScan);
 
@@ -50,7 +51,8 @@ public sealed class HealthReportExporter
             修复计划 = repairPlan,
             修复执行 = repairAndRescan?.Repair,
             修复前扫描 = repairAndRescan?.BeforeScan,
-            修复后扫描 = repairAndRescan?.AfterScan
+            修复后扫描 = repairAndRescan?.AfterScan,
+            Reconnecting自愈 = reconnectingRecovery
         };
 
         var options = new JsonSerializerOptions
@@ -67,7 +69,8 @@ public sealed class HealthReportExporter
         string filePath,
         CodexHealthScanResult currentScan,
         RepairAndRescanResult? repairAndRescan = null,
-        RepairPlan? repairPlan = null)
+        RepairPlan? repairPlan = null,
+        ReconnectingRecoveryResult? reconnectingRecovery = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("报告路径不能为空。", nameof(filePath));
@@ -75,7 +78,10 @@ public sealed class HealthReportExporter
         var fullPath = Path.GetFullPath(filePath);
         var directory = Path.GetDirectoryName(fullPath);
         if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
-        File.WriteAllText(fullPath, BuildJson(currentScan, repairAndRescan, repairPlan), new System.Text.UTF8Encoding(false));
+        File.WriteAllText(
+            fullPath,
+            BuildJson(currentScan, repairAndRescan, repairPlan, reconnectingRecovery),
+            new System.Text.UTF8Encoding(false));
         return fullPath;
     }
 
