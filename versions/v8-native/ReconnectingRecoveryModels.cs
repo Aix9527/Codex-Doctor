@@ -28,7 +28,8 @@ public sealed record ReconnectingRecoveryResult(
     [property: JsonPropertyName("选中代理地址")] string? SelectedProxyUrl,
     [property: JsonPropertyName("网络已验证")] bool NetworkVerified,
     [property: JsonPropertyName("Desktop已验证")] bool DesktopVerified,
-    [property: JsonPropertyName("修复动作")] IReadOnlyList<RepairActionResult> Actions)
+    [property: JsonPropertyName("修复动作")] IReadOnlyList<RepairActionResult> Actions,
+    [property: JsonIgnore] CodexHealthScanResult? AfterScan = null)
 {
     [JsonPropertyName("状态")]
     public string StatusZh => Status switch
