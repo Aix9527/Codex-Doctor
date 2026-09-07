@@ -39,10 +39,11 @@ public sealed class HealthReportExporter
         RepairPlan? repairPlan = null)
     {
         ArgumentNullException.ThrowIfNull(currentScan);
+        var reconnectingRecovery = ReconnectingRecoveryContext.Latest;
 
         var payload = new
         {
-            版本 = "8.1.2",
+            版本 = "8.2.0",
             软件作者 = "Aix",
             生成时间 = DateTimeOffset.Now,
             管理员权限 = _isAdministrator(),
@@ -50,7 +51,8 @@ public sealed class HealthReportExporter
             修复计划 = repairPlan,
             修复执行 = repairAndRescan?.Repair,
             修复前扫描 = repairAndRescan?.BeforeScan,
-            修复后扫描 = repairAndRescan?.AfterScan
+            修复后扫描 = repairAndRescan?.AfterScan,
+            Reconnecting专项恢复 = reconnectingRecovery
         };
 
         var options = new JsonSerializerOptions
