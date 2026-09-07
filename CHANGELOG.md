@@ -1,5 +1,16 @@
 # Changelog
 
+## V8.2.0 Reconnecting 端到端自愈
+- 主界面新增 `Reconnecting 自愈`，从普通重启升级为“fresh 扫描 → 安全修复 → 真实 Desktop 重启 → fresh discovery → fresh 网络复检”的闭环
+- 新增 `ReconnectingRecoveryDecisionEngine`：直连 TLS 健康时不强制代理；直连失败时只允许使用 `DiagnosisResult.ProxyUrl` 中已经通过 HTTPS 验证的代理，不猜常见端口
+- 新增 `ReconnectingRecoveryService`，复用既有 RepairPlan / CodexRepairEngine；没有可信 Desktop 或存在 Critical/Urgent ManualRequired/ExternalRequired 安全门时拒绝自动动作
+- 最终 `RECOVERED` 必须同时满足网络路径 fresh 验证和同一真实 Desktop EXE 路径 fresh discovery/运行验证；网络仅恢复时返回 `NETWORK_RECOVERED`
+- 新增 `PROXY_FAILED` / `DNS_FAILED` / `TLS_FAILED` / `DESKTOP_RESTART_FAILED` / `MANUAL_REQUIRED` 结构化恢复状态，未验证状态不得伪报成功
+- 完整报告新增 `Reconnecting自愈` 证据区段，记录 before/after ScanId、网络/Desktop 验证、代理路径、动作和中文摘要，继续执行敏感值脱敏
+- `MainDashboardState` 新增 Reconnecting 安全门；V8.1.1 UI 升级层继续保留中文 / English / 安装管理并增加专项自愈入口
+- V8.1.2 Release 工作流冻结为历史手动复现并固定 checkout `v8.1.2`，避免 V8.2.0 合并后用新源码误跑旧版本门禁
+- 新增独立 `release-v8.2.0` 工作流，继续坚持 Windows 管理员 manifest、win-x64 自包含单文件、无运行时 PowerShell/外置 DLL、SHA256 与既有 Release 不覆盖
+
 ## V8.1.2 Desktop 稳定性修复
 - 导出完整报告改用标准 Windows `SaveFileDialog`，允许自由选择保存目录；取消时零写入
 - Desktop 卸载前重新扫描真实客户端，根据已确认的 `ChatGPT.exe` / `Codex.exe` 动态选择 `ChatGPT` / `Codex` 精确 winget 名称，不再把固定 Microsoft Store 安装 ID 当成所有已安装客户端的卸载身份
