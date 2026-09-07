@@ -1,10 +1,10 @@
 # Codex Doctor
 
-## V9 功能重构版
+## V9.0.0 Functional Rebuild（当前推荐版本）
 
 新增独立 `versions/v9`，不依赖旧版程序集。入口改为 **一键修复重连**：检测当前本地代理及实际监听端口，通过 HTTPS 验证后创建/更新 `~/.codex/.env` 的 `HTTP_PROXY` 和 `HTTPS_PROXY`，保留其他配置，备份并复检。
 
-同时重建客户端识别、进程启动/重启、官方安装管理、配置权限/PATH 修复、Git/npm 代理清理、迁移恢复、语言设置自动化和报告导出。[V9 使用与验证说明](versions/v9/README.md)。
+同时重建客户端识别、进程启动/重启、官方安装管理、配置权限/PATH 修复、Git/npm 代理清理、迁移恢复、语言设置自动化和报告导出。[V9 使用与验证说明](versions/v9/README.md)，[V9.0.0 发布说明](RELEASE_NOTES_V9.0.0.md)。
 
 V9 已有行为测试、真实本地代理临时目录测试和 UI 自动化夹具证据；尚不能据此宣称全部客户端场景已经验收或所有 Reconnecting 故障均可自动解决。下面保留 V8 历史说明。
 
@@ -122,7 +122,8 @@ V8.1.1 引入的 **中文 / English 双向一键切换**、**Codex Desktop / CLI
 - `versions/v5` — 安装版 GUI、健康灯、重启、报告、卸载与 EXE 构建脚本
 - `versions/v6` — DNS/TLS/代理/TUN/Git/npm 连接链路诊断与故障分类
 - `versions/v7` — V7.1.2 PowerShell 兼容版
-- `versions/v8-native` — V8.2.0 C#/.NET 8 原生维修与 Reconnecting 自愈中心
+- `versions/v8-native` — V8.2.0 C#/.NET 8 原生维修与 Reconnecting 自愈中心（历史版本）
+- `versions/v9` — V9.0.0 Functional Rebuild 独立重构版（当前推荐版本）
 
 V7.1.2、V8.0.x、V8.1.0、V8.1.1、V8.1.2 的发布说明与历史 Release 工作流继续保留；旧版本工作流只用于固定 tag 的手动历史复现，不覆盖既有资产。
 
