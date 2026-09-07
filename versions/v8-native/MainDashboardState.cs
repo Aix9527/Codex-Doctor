@@ -5,6 +5,7 @@ public sealed record MainDashboardState(
     bool CanStart,
     bool CanRestart,
     bool CanRepair,
+    bool CanRecoverReconnecting,
     bool CanExportReport,
     int RepairableCount,
     int CriticalCount,
@@ -20,7 +21,7 @@ public sealed record MainDashboardState(
         if (scan is null)
         {
             return new MainDashboardState(
-                true, false, false, false, false,
+                true, false, false, false, false, false,
                 0, 0, 0, 0, 0, 0,
                 "智能迁移/恢复",
                 "一键中文");
@@ -32,6 +33,9 @@ public sealed record MainDashboardState(
             x.Status == CodexIssueStatus.Repairable &&
             x.AutoRepairable &&
             !string.IsNullOrWhiteSpace(x.RepairActionId));
+        var hasBlockingRecoveryGate = issues.Any(x =>
+            x.Status is CodexIssueStatus.ManualRequired or CodexIssueStatus.ExternalRequired &&
+            x.Severity is CodexIssueSeverity.Critical or CodexIssueSeverity.Urgent);
 
         var languageAction = LanguageActionResolver.Resolve(scan.Discovery.LanguageState).ActionZh;
         var migrationAction = MigrationActionResolver.Resolve(
@@ -44,6 +48,7 @@ public sealed record MainDashboardState(
             hasDesktop,
             hasDesktop,
             repairable > 0,
+            hasDesktop && !hasBlockingRecoveryGate,
             true,
             repairable,
             issues.Count(x => x.Severity == CodexIssueSeverity.Critical),
