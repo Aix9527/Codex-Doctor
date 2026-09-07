@@ -51,6 +51,7 @@ public static class V811UiUpgrade
             .FirstOrDefault(x => x.Text.Contains("一键扫描 Codex", StringComparison.OrdinalIgnoreCase));
         var progress = Descendants(form).OfType<ProgressBar>().FirstOrDefault();
         var extensionBusy = false;
+        var recoveryEligibilityRequested = false;
 
         recovery.Click += async (_, _) =>
         {
@@ -93,7 +94,16 @@ public static class V811UiUpgrade
             var scanned = progress is not null && progress.Maximum > 0 && progress.Value >= progress.Maximum;
             var mainReady = scanButton is null || scanButton.Enabled;
             var enabled = scanned && mainReady && !extensionBusy;
-            recovery.Enabled = enabled && form.CanRunReconnectingRecovery;
+
+            if (!scanned)
+                recoveryEligibilityRequested = false;
+            else if (enabled && !recoveryEligibilityRequested)
+            {
+                recoveryEligibilityRequested = true;
+                _ = form.RefreshReconnectingRecoveryEligibilityAsync();
+            }
+
+            recovery.Enabled = enabled && form.CanRunReconnectingRecovery();
             chinese.Enabled = enabled;
             english.Enabled = enabled;
             install.Enabled = enabled;
