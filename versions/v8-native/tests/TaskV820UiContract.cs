@@ -16,8 +16,10 @@ internal static class TaskV820UiContract
         var upgradeSource = File.ReadAllText(upgradePath);
         var source = mainSource + "\n" + programSource + "\n" + upgradeSource;
 
-        Require(programSource.Contains("V820UiUpgrade.Apply(form)", StringComparison.Ordinal), "Program 必须应用 V8.2 UI 升级层。");
-        Require(upgradeSource.Contains("V811UiUpgrade.Apply(form)", StringComparison.Ordinal), "V8.2 UI 必须保留 V8.1.2 已有语言/安装升级能力。");
+        var legacyIndex = programSource.IndexOf("V811UiUpgrade.Apply(form)", StringComparison.Ordinal);
+        var v820Index = programSource.IndexOf("V820UiUpgrade.Apply(form)", StringComparison.Ordinal);
+        Require(legacyIndex >= 0 && v820Index > legacyIndex, "Program 必须先应用 V8.1.2 UI 兼容层，再叠加 V8.2 UI 升级层。");
+        Require(!upgradeSource.Contains("V811UiUpgrade.Apply(form)", StringComparison.Ordinal), "V820UiUpgrade 不得重复应用 V811UiUpgrade，避免重复按钮和重复事件绑定。");
         Require(source.Contains("Codex Doctor V8.2.0", StringComparison.Ordinal), "V8.2 主界面必须明确显示 8.2.0。");
         Require(source.Contains("Reconnecting 自愈", StringComparison.Ordinal), "主界面必须提供可见的“Reconnecting 自愈”按钮。");
         Require(upgradeSource.Contains("ReconnectingSelfHealService", StringComparison.Ordinal), "专项入口必须绑定 ReconnectingSelfHealService，而不是复用普通一键修复假装闭环。");
