@@ -44,12 +44,14 @@ internal static class TaskV820RecoveryUiContract
         if (sourceRoot is null) throw new Exception("无法定位 V8 源码目录。");
 
         var upgrade = File.ReadAllText(Path.Combine(sourceRoot.FullName, "V811UiUpgrade.cs"));
-        var mainForm = File.ReadAllText(Path.Combine(sourceRoot.FullName, "MainForm.cs"));
+        var recoveryUi = File.ReadAllText(Path.Combine(sourceRoot.FullName, "ReconnectingRecoveryUiExtensions.cs"));
+        var exporter = File.ReadAllText(Path.Combine(sourceRoot.FullName, "HealthReportExporter.cs"));
         Require(upgrade.Contains("Reconnecting 自愈", StringComparison.Ordinal), "主操作区必须新增 Reconnecting 自愈按钮。");
-        Require(upgrade.Contains("RunReconnectingRecoveryAsync", StringComparison.Ordinal), "Reconnecting 自愈按钮必须调用主窗体专项自愈入口。");
-        Require(mainForm.Contains("RunReconnectingRecoveryAsync", StringComparison.Ordinal), "MainForm 必须提供专项自愈 async handler。");
-        Require(mainForm.Contains("_lastRecovery", StringComparison.Ordinal), "MainForm 必须保留最近一次自愈结果用于报告证据链。");
-        Require(mainForm.Contains("_lastRecovery)", StringComparison.Ordinal), "导出完整报告必须携带最近一次 Reconnecting 自愈结果。");
+        Require(upgrade.Contains("RunReconnectingRecoveryAsync", StringComparison.Ordinal), "Reconnecting 自愈按钮必须调用专项 async handler。");
+        Require(upgrade.Contains("RefreshReconnectingRecoveryEligibilityAsync", StringComparison.Ordinal), "扫描完成后必须刷新专项自愈安全门状态。");
+        Require(recoveryUi.Contains("ReconnectingRecoveryEvidenceStore.Set", StringComparison.Ordinal), "专项自愈完成后必须保存最近一次结构化结果。");
+        Require(recoveryUi.Contains("fresh", StringComparison.OrdinalIgnoreCase), "专项自愈 UI 必须明确使用 fresh 扫描/验证语义。");
+        Require(exporter.Contains("ReconnectingRecoveryEvidenceStore.Latest", StringComparison.Ordinal), "原有导出报告流程必须自动携带最近一次 Reconnecting 自愈证据。");
     }
 
     private static CodexDiscoveryResult Desktop(bool running) => new(
