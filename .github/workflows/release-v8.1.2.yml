@@ -1,15 +1,6 @@
 name: release-v8.1.2
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'versions/v8-native/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'RELEASE_NOTES_V8.1.2.md'
-      - '.github/workflows/release-v8.1.2.yml'
-      - '.github/workflows/release-v8.1.1.yml'
   workflow_dispatch:
 
 permissions:
@@ -17,10 +8,11 @@ permissions:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v8.1.2
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -43,41 +35,23 @@ jobs:
           if (-not (Test-Path $exe)) { throw '未生成 CodexDoctor.exe。' }
           $bytes = [IO.File]::ReadAllBytes((Resolve-Path $exe))
           if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw '输出不是有效 PE EXE。' }
-
-          $forbidden = Get-ChildItem '.\dist\v8-native' -Recurse -File | Where-Object { $_.Extension -in '.ps1','.psm1','.dll','.runtimeconfig.json','.deps.json' }
-          if ($forbidden) {
-            $forbidden | ForEach-Object { Write-Error $_.FullName }
-            throw '发布目录存在外置运行依赖。'
-          }
-
-          $manifest = Get-Content '.\versions\v8-native\app.manifest' -Raw
-          if ($manifest -notmatch 'requireAdministrator') { throw 'V8.1.2 manifest 未强制管理员权限。' }
           $project = Get-Content '.\versions\v8-native\CodexDoctor.Native.csproj' -Raw
-          if ($project -notmatch '<Version>8\.1\.2</Version>') { throw '项目版本不是 8.1.2。' }
-
-          $source = Get-ChildItem '.\versions\v8-native' -Filter '*.cs' -File | Get-Content -Raw
-          $joined = $source -join "`n"
-          foreach ($token in @('powershell.exe','pwsh.exe','.ps1','.psm1')) {
-            if ($joined -match [regex]::Escape($token)) { throw "原生运行时代码包含禁止依赖：$token" }
-          }
+          if ($project -notmatch '<Version>8\.1\.2</Version>') { throw '历史 tag 的项目版本不是 8.1.2。' }
 
       - name: 生成 SHA256
         shell: pwsh
         run: |
           $hash = (Get-FileHash '.\dist\v8-native\CodexDoctor.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content '.\dist\v8-native\CodexDoctor.exe.sha256' "$hash  CodexDoctor.exe" -Encoding ASCII
-          Write-Host "SHA256=$hash"
 
-      - name: 创建 GitHub Release v8.1.2
+      - name: 验证历史 GitHub Release v8.1.2
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view v8.1.2 --repo "$env:GITHUB_REPOSITORY" *> $null
-          $exists = ($LASTEXITCODE -eq 0)
-          if ($exists) {
+          if ($LASTEXITCODE -eq 0) {
             Write-Host 'Release 已存在，跳过发布且不覆盖任何现有资产：v8.1.2'
             exit 0
           }
-
-          gh release create v8.1.2 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.1.2 Desktop 稳定性修复' --notes-file '.\RELEASE_NOTES_V8.1.2.md' --repo "$env:GITHUB_REPOSITORY"
+          throw '历史 v8.1.2 Release 不存在；手动历史工作流不会创建替代资产。'
