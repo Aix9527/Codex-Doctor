@@ -4,7 +4,7 @@ public sealed class AboutForm : Form
 {
     public AboutForm()
     {
-        Text = "关于 Codex Doctor V8.1.2";
+        Text = "关于 Codex Doctor V8.1.3";
         Width = 520;
         Height = 360;
         MinimumSize = new Size(500, 340);
@@ -16,7 +16,7 @@ public sealed class AboutForm : Form
 
         var title = new Label
         {
-            Text = "Codex Doctor V8.1.2",
+            Text = "Codex Doctor V8.1.3",
             Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
             Location = new Point(28, 24),
             Size = new Size(440, 44)
@@ -30,7 +30,7 @@ public sealed class AboutForm : Form
                    "QQ：976936105\n" +
                    "抖音：xch03209527\n\n" +
                    "GitHub：Aix9527/Codex-Doctor\n" +
-                   "版本：8.1.2",
+                   "版本：8.1.3",
             Location = new Point(32, 82),
             Size = new Size(430, 170)
         };
