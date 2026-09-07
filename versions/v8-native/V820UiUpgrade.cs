@@ -126,6 +126,7 @@ public static class V820UiUpgrade
     {
         var holder = LatestRecovery.GetOrCreateValue(form);
         holder.Value = result;
+        ReconnectingRecoveryContext.Record(result);
     }
 
     private static Dictionary<Control, bool> CaptureEnabledState(FlowLayoutPanel panel, Button? scanButton)
