@@ -11,6 +11,7 @@ internal static class V813ReconnectLanguageTests
         TestReconnectRefusesMutationWithoutHealthyRoute();
         TestUiAutomationRootFallback();
         TestLanguageReportsRootFailureAfterWindowBinding();
+        TestUiUpgradeExposesReconnectButtonAndHandler();
     }
 
     private static void Assert(bool condition, string message)
@@ -102,6 +103,19 @@ internal static class V813ReconnectLanguageTests
             "应准确报告 UI Automation 根元素创建失败。");
         Assert(!result.SummaryZh.Contains("没有找到与扫描结果安全匹配的 Desktop 主窗口", StringComparison.OrdinalIgnoreCase),
             "不得再把 UIA 根元素失败误报成没有找到 Desktop 主窗口。");
+    }
+
+    private static void TestUiUpgradeExposesReconnectButtonAndHandler()
+    {
+        var sourceRoot = Directory.GetParent(AppContext.BaseDirectory)!;
+        while (sourceRoot is not null && !File.Exists(Path.Combine(sourceRoot.FullName, "CodexDoctor.Native.csproj")))
+            sourceRoot = sourceRoot.Parent;
+        Assert(sourceRoot is not null, "无法定位 V8 源码目录。");
+
+        var source = File.ReadAllText(Path.Combine(sourceRoot!.FullName, "V811UiUpgrade.cs"));
+        Assert(source.Contains("\"修复重连\"", StringComparison.Ordinal), "主操作区必须出现“修复重连”按钮。");
+        Assert(source.Contains("RepairReconnectAsync", StringComparison.Ordinal), "修复重连按钮必须绑定独立处理器。");
+        Assert(source.Contains("ReconnectRepairService", StringComparison.Ordinal), "主界面必须调用经过验证的 ReconnectRepairService，而不是只做重启。");
     }
 
     private sealed class QueueReconnectProbe : IReconnectHealthProbe
