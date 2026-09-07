@@ -23,14 +23,16 @@ public static class V811UiUpgrade
             legacyLanguage.Dispose();
         }
 
-        // V8.1.x 把八个主操作保持在同一行，不扩大面板避免遮挡下方迁移目标和问题列表。
+        // V8.2 把九个主操作保持在同一行，不扩大面板避免遮挡下方迁移目标和问题列表。
         panel.WrapContents = false;
         panel.Height = 56;
         ResizeExistingButtons(panel);
 
-        var chinese = CreateButton("中文", 88);
-        var english = CreateButton("English", 88);
-        var install = CreateButton("安装 / 卸载", 135);
+        var recovery = CreateButton("Reconnecting 自愈", 130);
+        var chinese = CreateButton("中文", 70);
+        var english = CreateButton("English", 75);
+        var install = CreateButton("安装 / 卸载", 105);
+        panel.Controls.Add(recovery);
         panel.Controls.Add(chinese);
         panel.Controls.Add(english);
         panel.Controls.Add(install);
@@ -38,10 +40,11 @@ public static class V811UiUpgrade
         var report = panel.Controls.OfType<Button>().FirstOrDefault(x => x.Text.Contains("导出", StringComparison.OrdinalIgnoreCase));
         if (report is not null)
         {
-            panel.Controls.SetChildIndex(chinese, Math.Min(4, panel.Controls.Count - 1));
-            panel.Controls.SetChildIndex(english, Math.Min(5, panel.Controls.Count - 1));
-            panel.Controls.SetChildIndex(install, Math.Min(6, panel.Controls.Count - 1));
-            panel.Controls.SetChildIndex(report, Math.Min(7, panel.Controls.Count - 1));
+            panel.Controls.SetChildIndex(recovery, Math.Min(3, panel.Controls.Count - 1));
+            panel.Controls.SetChildIndex(chinese, Math.Min(5, panel.Controls.Count - 1));
+            panel.Controls.SetChildIndex(english, Math.Min(6, panel.Controls.Count - 1));
+            panel.Controls.SetChildIndex(install, Math.Min(7, panel.Controls.Count - 1));
+            panel.Controls.SetChildIndex(report, Math.Min(8, panel.Controls.Count - 1));
         }
 
         var scanButton = Descendants(form).OfType<Button>()
@@ -49,6 +52,13 @@ public static class V811UiUpgrade
         var progress = Descendants(form).OfType<ProgressBar>().FirstOrDefault();
         var extensionBusy = false;
 
+        recovery.Click += async (_, _) =>
+        {
+            if (extensionBusy) return;
+            extensionBusy = true;
+            try { await form.RunReconnectingRecoveryAsync(); }
+            finally { extensionBusy = false; }
+        };
         chinese.Click += async (_, _) =>
         {
             if (extensionBusy) return;
@@ -76,13 +86,14 @@ public static class V811UiUpgrade
             finally { extensionBusy = false; }
         };
 
-        // 与 V8.1 的“先扫描，再操作”一致：完成一次 22/22 扫描后才启用新增主动作。
+        // 与 V8.1 的“先扫描，再操作”一致：完成一次全量扫描后才启用新增主动作。
         var timer = new System.Windows.Forms.Timer { Interval = 300 };
         timer.Tick += (_, _) =>
         {
             var scanned = progress is not null && progress.Maximum > 0 && progress.Value >= progress.Maximum;
             var mainReady = scanButton is null || scanButton.Enabled;
             var enabled = scanned && mainReady && !extensionBusy;
+            recovery.Enabled = enabled && form.CanRunReconnectingRecovery;
             chinese.Enabled = enabled;
             english.Enabled = enabled;
             install.Enabled = enabled;
@@ -165,11 +176,11 @@ public static class V811UiUpgrade
     {
         foreach (var button in panel.Controls.OfType<Button>())
         {
-            if (button.Text.Contains("启动 Codex", StringComparison.OrdinalIgnoreCase)) button.Width = 120;
-            else if (button.Text.Contains("重启 Codex", StringComparison.OrdinalIgnoreCase)) button.Width = 120;
-            else if (button.Text.Contains("修复", StringComparison.OrdinalIgnoreCase)) button.Width = 125;
-            else if (button.Text.Contains("迁移", StringComparison.OrdinalIgnoreCase) || button.Text.Contains("恢复", StringComparison.OrdinalIgnoreCase)) button.Width = 145;
-            else if (button.Text.Contains("导出", StringComparison.OrdinalIgnoreCase)) button.Width = 145;
+            if (button.Text.Contains("启动 Codex", StringComparison.OrdinalIgnoreCase)) button.Width = 105;
+            else if (button.Text.Contains("重启 Codex", StringComparison.OrdinalIgnoreCase)) button.Width = 105;
+            else if (button.Text.Contains("修复", StringComparison.OrdinalIgnoreCase)) button.Width = 110;
+            else if (button.Text.Contains("迁移", StringComparison.OrdinalIgnoreCase) || button.Text.Contains("恢复", StringComparison.OrdinalIgnoreCase)) button.Width = 130;
+            else if (button.Text.Contains("导出", StringComparison.OrdinalIgnoreCase)) button.Width = 120;
         }
     }
 
