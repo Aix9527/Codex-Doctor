@@ -1,5 +1,18 @@
 # Changelog
 
+## V8.2.0 Reconnecting 专项自愈
+- 新增独立 **Reconnecting 自愈** 入口：修复前扫描 → 安全白名单计划 → 备份/执行/验证/必要时回滚 → 必要时 Desktop 重启 → fresh rescan → 确定性终态分类
+- 新增 `ReconnectingRecoveryClassifier`，区分 `Recovered`、`NetworkRecovered`、`ProxyFailed`、`DnsFailed`、`TlsFailed`、`DesktopRestartFailed`、`ManualRequired`
+- 新增专项计划生成器，白名单规范化为 `codex.proxy.env`、`git.proxy.clear`、`npm.proxy.clear`、`codex.desktop.restart`
+- 固化代理安全边界：直连正常不写代理；未通过 HTTPS 验证的代理不写 `.codex/.env`；默认不写 Windows 用户级 HTTP/HTTPS 代理环境变量
+- 专项执行继续复用既有 RepairEngine 的备份、执行后验证和失败回滚；无法安全构造的计划动作留下失败审计，不静默跳过为成功
+- Desktop 重启在需要代理/配置变更时固定最后执行，取消后不再继续后续变更
+- Reconnecting 自愈完成后必须执行独立 fresh rescan，不复用修复前扫描结果
+- 主界面新增 V8.2.0 `Reconnecting 自愈` 按钮，运行时禁用冲突操作并记录每个动作/终态日志，完成后触发主扫描刷新
+- “导出完整报告”自动附带最近一次 Reconnecting 自愈的修复前/后 ScanId、网络诊断、动作结果、验证/回滚证据和最终状态，同时继续执行用户目录标准化与敏感值脱敏
+- 产品、关于页、CI artifact 与报告版本统一升级到 8.2.0
+- 新增独立 `release-v8.2.0` 工作流；V8.1.2 Release 工作流转为固定 checkout `v8.1.2` tag 的手动历史复现，避免 V8.2 合并后误跑旧版本发布门
+
 ## V8.1.2 Desktop 稳定性修复
 - 导出完整报告改用标准 Windows `SaveFileDialog`，允许自由选择保存目录；取消时零写入
 - Desktop 卸载前重新扫描真实客户端，根据已确认的 `ChatGPT.exe` / `Codex.exe` 动态选择 `ChatGPT` / `Codex` 精确 winget 名称，不再把固定 Microsoft Store 安装 ID 当成所有已安装客户端的卸载身份
@@ -83,7 +96,7 @@
 - DNS resolution checks for `chatgpt.com` and `api.openai.com`
 - TLS handshake diagnosis for `chatgpt.com:443`
 - Explicit HTTP proxy route validation
-- Clash/Mihomo/sing-box process and TUN adapter detection
+- Clash Verge / Mihomo / sing-box process and TUN adapter detection
 - Git global proxy mismatch detection
 - npm proxy mismatch detection
 - Deterministic failure classes: `DNS`, `TLS`, `PROXY`, `ENV_CONFLICT`, `HEALTHY`
@@ -105,7 +118,7 @@
 - GUI migration / restore
 
 ## V3
-- Clash Verge / Mihomo config discovery
+- Clash Verge / Mihimo config discovery
 - `mixed-port`, `port`, `socks-port` parsing
 - Real HTTPS proxy validation
 
