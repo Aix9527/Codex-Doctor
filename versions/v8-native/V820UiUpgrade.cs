@@ -15,9 +15,7 @@ public static class V820UiUpgrade
     {
         ArgumentNullException.ThrowIfNull(form);
 
-        // 保留 V8.1.2 的语言切换、安装/卸载等既有升级能力，再叠加 V8.2 专项入口。
-        V811UiUpgrade.Apply(form);
-
+        // Program 已先应用 V8.1.2 兼容层；这里只叠加 V8.2 专项入口，避免重复按钮与事件绑定。
         form.Text = "Codex Doctor V8.2.0 Reconnecting 自愈中心";
         var title = Descendants(form).OfType<Label>()
             .FirstOrDefault(x => x.Text.StartsWith("Codex Doctor V8.1", StringComparison.Ordinal));
