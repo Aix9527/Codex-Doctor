@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using CodexDoctor.Native;
 using static CodexDoctor.Native.Tests.V81TestSupport;
 
@@ -34,9 +36,19 @@ internal static class TaskV81ReportContract
         var exporter = new HealthReportExporter(profile, () => true);
         var json = exporter.BuildJson(after, repairAndRescan, plan);
 
-        // 这是 V8.1 报告格式/隐私兼容合同，不应把后续补丁版本永久锁死在 8.1.0；
-        // 当前具体版本由对应发布合同（例如 V8.1.2）单独精确校验。
-        Require(json.Contains("\"版本\": \"8.1.", StringComparison.Ordinal), "报告必须声明 V8.1.x 版本。");
+        // V8.1 引入的是报告审计/隐私合同，不应把后续 V8 版本永久锁死在 8.1.x。
+        // 报告身份必须和当前项目版本保持一致，同时不得回退到 8.1.0 之前。
+        var csproj = File.ReadAllText(Path.Combine(SourceRoot().FullName, "CodexDoctor.Native.csproj"));
+        var projectVersionText = Regex.Match(csproj, @"<Version>([^<]+)</Version>").Groups[1].Value;
+        Require(Version.TryParse(projectVersionText, out var projectVersion) && projectVersion >= new Version(8, 1, 0),
+            "当前项目版本不得低于 V8.1 报告合同基线。");
+        using (var document = JsonDocument.Parse(json))
+        {
+            var reportVersionText = document.RootElement.GetProperty("版本").GetString();
+            Require(Version.TryParse(reportVersionText, out var reportVersion), "报告必须声明有效版本号。");
+            Require(reportVersion == projectVersion, "报告版本必须与当前项目版本一致。");
+        }
+
         Require(json.Contains("\"软件作者\": \"Aix\""), "报告作者必须只写 Aix。");
         Require(json.Contains("\"管理员权限\": true"), "报告必须记录管理员权限状态。");
         Require(json.Contains("\"修复计划\""), "报告必须包含 RepairPlan 摘要。");
