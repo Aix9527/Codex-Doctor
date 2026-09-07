@@ -159,10 +159,14 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
     private const int TreeScopeDescendants = 4;
 
     private readonly IDesktopWindowLocator _windowLocator;
+    private readonly IUiAutomationRootProvider _rootProvider;
 
-    public WindowsUiAutomationLanguageBackend(IDesktopWindowLocator? windowLocator = null)
+    public WindowsUiAutomationLanguageBackend(
+        IDesktopWindowLocator? windowLocator = null,
+        IUiAutomationRootProvider? rootProvider = null)
     {
         _windowLocator = windowLocator ?? new WindowsDesktopWindowLocator();
+        _rootProvider = rootProvider ?? new WindowsUiAutomationRootProvider();
     }
 
     public async Task<LanguageBackendResult> SetAsync(
@@ -173,9 +177,16 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var root = BindConfirmedRoot(desktop, out var binding);
+            var root = BindConfirmedRoot(desktop, out var binding, out var rootBinding);
             if (root is null)
-                return new(false, false, false, $"没有找到与扫描结果安全匹配的 Desktop 主窗口，未执行 UI Automation。{binding.DiagnosticZh}");
+            {
+                if (!binding.Found || binding.Handle == 0)
+                    return new(false, false, false,
+                        $"没有找到与扫描结果安全匹配的 Desktop 主窗口，未执行 UI Automation。{binding.DiagnosticZh}");
+
+                return new(false, false, false,
+                    $"Desktop 窗口已绑定（{binding.Method}，PID={binding.ProcessId}，HWND=0x{binding.Handle:X}），但 UI Automation 根元素创建失败。{rootBinding.DiagnosticZh}");
+            }
 
             dynamic automation = CreateAutomation();
             dynamic currentRoot = root;
@@ -193,7 +204,8 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
                 }
             }
             if (settings is null || !TryInvokeOrExpand(settings))
-                return new(false, false, false, $"Desktop 窗口已绑定（{binding.Method}，PID={binding.ProcessId}），但未能找到或打开 Settings/设置。");
+                return new(false, false, false,
+                    $"Desktop 窗口与 UI Automation 根元素已绑定（窗口={binding.Method}，UIA={rootBinding.Method}，PID={binding.ProcessId}），但未能找到或打开 Settings/设置。");
 
             await Task.Delay(300, cancellationToken).ConfigureAwait(false);
             currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
@@ -205,18 +217,21 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
             currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
             var language = FindByNames(automation, currentRoot, new string[] { "Language", "语言" });
             if (language is null || !TryInvokeOrExpand(language))
-                return new(false, false, false, $"Desktop 窗口已绑定（{binding.Method}），Settings 已打开，但未能在 General/通用中找到可自动操作的 Language/语言控件。");
+                return new(false, false, false,
+                    $"Desktop 窗口已绑定（{binding.Method}），Settings 已打开，但未能在 General/通用中找到可自动操作的 Language/语言控件。");
 
             await Task.Delay(180, cancellationToken).ConfigureAwait(false);
             currentRoot = BindConfirmedRoot(desktop, out _) ?? currentRoot;
             var targetNames = TargetNames(targetLanguage);
             var target = FindByNames(automation, currentRoot, targetNames);
             if (target is null || !TrySelectOrInvoke(target))
-                return new(false, false, false, $"Desktop 窗口和 Language/语言控件已找到，但没有可选择的目标语言 {targetLanguage}。");
+                return new(false, false, false,
+                    $"Desktop 窗口和 Language/语言控件已找到，但没有可选择的目标语言 {targetLanguage}。");
 
             await Task.Delay(250, cancellationToken).ConfigureAwait(false);
             var verified = await VerifyAsync(desktop, targetLanguage, cancellationToken).ConfigureAwait(false);
-            return new(true, verified, false, verified ? $"已通过应用自身语言设置切换并验证 {targetLanguage}。" : $"已选择 {targetLanguage}，但尚无法验证是否已生效。");
+            return new(true, verified, false,
+                verified ? $"已通过应用自身语言设置切换并验证 {targetLanguage}。" : $"已选择 {targetLanguage}，但尚无法验证是否已生效。");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -262,20 +277,23 @@ public sealed class WindowsUiAutomationLanguageBackend : IUiLanguageAutomationBa
             ?? throw new InvalidOperationException("无法初始化 UI Automation。");
     }
 
-    private dynamic? BindConfirmedRoot(CodexDesktopInstallationInfo desktop, out DesktopWindowBindingResult binding)
+    private dynamic? BindConfirmedRoot(CodexDesktopInstallationInfo desktop, out DesktopWindowBindingResult binding) =>
+        BindConfirmedRoot(desktop, out binding, out _);
+
+    private dynamic? BindConfirmedRoot(
+        CodexDesktopInstallationInfo desktop,
+        out DesktopWindowBindingResult binding,
+        out UiAutomationRootBinding rootBinding)
     {
         binding = _windowLocator.Locate(desktop);
-        if (!binding.Found || binding.Handle == 0) return null;
-
-        try
+        if (!binding.Found || binding.Handle == 0)
         {
-            dynamic automation = CreateAutomation();
-            return automation.ElementFromHandle(binding.Handle);
-        }
-        catch
-        {
+            rootBinding = UiAutomationRootBinding.Failed("未执行 UI Automation 根元素绑定，因为 Desktop 窗口定位未通过。");
             return null;
         }
+
+        rootBinding = _rootProvider.Bind(binding.Handle);
+        return rootBinding.Success ? rootBinding.Root : null;
     }
 
     private static dynamic? FindByNames(dynamic automation, dynamic root, IReadOnlyList<string> names)
