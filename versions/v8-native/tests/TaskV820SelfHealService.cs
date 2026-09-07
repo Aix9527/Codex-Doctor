@@ -180,10 +180,18 @@ internal static class TaskV820SelfHealService
             action.ActionId.Equals(actionId, StringComparison.OrdinalIgnoreCase) ? action : null;
     }
 
-    private sealed class FakeAction(string actionId, bool verify) : IRepairAction
+    private sealed class FakeAction : IRepairAction
     {
-        public string ActionId { get; } = actionId;
-        public string TitleZh => actionId;
+        private readonly bool _verify;
+
+        public FakeAction(string actionId, bool verify)
+        {
+            ActionId = actionId;
+            _verify = verify;
+        }
+
+        public string ActionId { get; }
+        public string TitleZh => ActionId;
         public bool RequiresRestart => false;
         public bool BackupRequired => false;
         public bool Executed { get; private set; }
@@ -201,7 +209,7 @@ internal static class TaskV820SelfHealService
         {
             cancellationToken.ThrowIfCancellationRequested();
             Verified = true;
-            return Task.FromResult(verify);
+            return Task.FromResult(_verify);
         }
 
         public Task RollbackAsync(RepairActionExecution execution, CancellationToken cancellationToken)
