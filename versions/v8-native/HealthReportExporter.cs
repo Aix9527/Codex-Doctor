@@ -40,6 +40,7 @@ public sealed class HealthReportExporter
         ReconnectingRecoveryResult? reconnectingRecovery = null)
     {
         ArgumentNullException.ThrowIfNull(currentScan);
+        reconnectingRecovery ??= ReconnectingRecoveryEvidenceStore.Latest;
 
         var payload = new
         {
