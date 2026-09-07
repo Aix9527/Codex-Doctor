@@ -1,5 +1,14 @@
 # Changelog
 
+## V9.0.0 功能重构版
+- 独立重写主界面和核心服务，不引用 V8 程序集；保留历史目录。
+- 将入口改为“一键修复重连”：识别实际监听端口、HTTPS 验证、创建/更新 .env、唯一备份、独立复检和回滚。
+- 修复失效旧代理阻止新端口检测、带空格/export 的配置残留、取消后不回滚和以进程存在推断连接恢复的问题。
+- 重建 GUI/CLI 身份区分、正常退出后携代理启动、官方安装包管理、PATH/只读修复、Git/npm 代理清理及迁移事务。
+- 语言切换改用强类型 .NET Windows UI Automation，通过窗口夹具实际选中中英文并复检。
+- 增加 31 项行为测试、窗口交互测试、独立发布脚本和 GitHub Actions 工作流。
+- 外部安装/卸载、具体客户端语言控件及用户原始 Reconnecting 场景仍需实际验收；不承诺覆盖所有 Codex 故障。
+
 ## V8.2.0 Reconnecting 专项自愈
 - 新增独立 **Reconnecting 自愈** 入口：修复前扫描 → 安全白名单计划 → 备份/执行/验证/必要时回滚 → 必要时 Desktop 重启 → fresh rescan → 确定性终态分类
 - 新增 `ReconnectingRecoveryClassifier`，区分 `Recovered`、`NetworkRecovered`、`ProxyFailed`、`DnsFailed`、`TlsFailed`、`DesktopRestartFailed`、`ManualRequired`

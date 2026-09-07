@@ -1,0 +1,24 @@
+name: V9 功能重构验证
+on:
+  workflow_dispatch:
+  push:
+    paths: ['versions/v9/**', '.github/workflows/build-v9.yml']
+  pull_request:
+    paths: ['versions/v9/**', '.github/workflows/build-v9.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: 行为测试和发布验证
+        shell: pwsh
+        run: ./versions/v9/Build.ps1 -OutputDirectory ./artifacts/v9
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CodexDoctor-V9-Windows
+          path: artifacts/v9/

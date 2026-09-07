@@ -1,8 +1,16 @@
 # Codex Doctor
 
+## V9 功能重构版
+
+新增独立 `versions/v9`，不依赖旧版程序集。入口改为 **一键修复重连**：检测当前本地代理及实际监听端口，通过 HTTPS 验证后创建/更新 `~/.codex/.env` 的 `HTTP_PROXY` 和 `HTTPS_PROXY`，保留其他配置，备份并复检。
+
+同时重建客户端识别、进程启动/重启、官方安装管理、配置权限/PATH 修复、Git/npm 代理清理、迁移恢复、语言设置自动化和报告导出。[V9 使用与验证说明](versions/v9/README.md)。
+
+V9 已有行为测试、真实本地代理临时目录测试和 UI 自动化夹具证据；尚不能据此宣称全部客户端场景已经验收或所有 Reconnecting 故障均可自动解决。下面保留 V8 历史说明。
+
 Windows Codex / ChatGPT Desktop **一键扫描、连接诊断、安全修复、Reconnecting 专项自愈、智能迁移与恢复**工具。
 
-## 当前推荐版本：V8.2.0 Reconnecting 自愈中心
+## 历史版本：V8.2.0 Reconnecting 自愈中心
 
 V8.2.0 使用 **C# + .NET 8 + WinForms**，正式发布物为真正的 `win-x64` 自包含单文件 `CodexDoctor.exe`。它在 V8.1.2 的 Desktop 稳定性修复、V8.1.1 的中文 / English 与安装 / 卸载能力之上，新增面向 Codex Desktop 持续 `Reconnecting` 的确定性专项闭环。
 

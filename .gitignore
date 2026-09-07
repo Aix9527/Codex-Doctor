@@ -11,6 +11,8 @@ logs/
 state.json
 
 # Build outputs
+**/bin/
+**/obj/
 releases-build/
 CodexDoctorV*.exe
 

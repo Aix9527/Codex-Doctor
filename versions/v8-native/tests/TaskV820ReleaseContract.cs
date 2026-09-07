@@ -20,7 +20,8 @@ internal static class TaskV820ReleaseContract
         Require(about.Contains("版本：8.2.0", StringComparison.Ordinal), "关于窗口必须显示版本 8.2.0。");
 
         var readme = File.ReadAllText(Path.Combine(repoRoot.FullName, "README.md"));
-        Require(readme.Contains("当前推荐版本：V8.2.0", StringComparison.Ordinal), "README 当前推荐版本必须升级到 V8.2.0。");
+        // A newer major release may replace the recommended version; V8 documentation must remain explicit.
+        Require(readme.Contains("当前推荐版本：V8.2.0", StringComparison.Ordinal) || readme.Contains("历史版本：V8.2.0", StringComparison.Ordinal), "README 必须保留 V8.2.0 当前或历史版本说明。");
         Require(readme.Contains("Reconnecting 自愈", StringComparison.Ordinal), "README 必须解释 Reconnecting 自愈入口。");
         Require(readme.Contains("RECOVERED", StringComparison.Ordinal), "README 必须解释 RECOVERED 终态。");
         Require(readme.Contains("NETWORK_RECOVERED", StringComparison.Ordinal), "README 必须解释 NETWORK_RECOVERED 终态。");
