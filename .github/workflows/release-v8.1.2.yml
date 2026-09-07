@@ -1,15 +1,6 @@
 name: release-v8.1.2
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'versions/v8-native/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'RELEASE_NOTES_V8.1.2.md'
-      - '.github/workflows/release-v8.1.2.yml'
-      - '.github/workflows/release-v8.1.1.yml'
   workflow_dispatch:
 
 permissions:
@@ -17,10 +8,11 @@ permissions:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v8.1.2
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -80,4 +72,4 @@ jobs:
             exit 0
           }
 
-          gh release create v8.1.2 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target "$env:GITHUB_SHA" --title 'Codex Doctor V8.1.2 Desktop 稳定性修复' --notes-file '.\RELEASE_NOTES_V8.1.2.md' --repo "$env:GITHUB_REPOSITORY"
+          gh release create v8.1.2 '.\dist\v8-native\CodexDoctor.exe' '.\dist\v8-native\CodexDoctor.exe.sha256' --target v8.1.2 --title 'Codex Doctor V8.1.2 Desktop 稳定性修复' --notes-file '.\RELEASE_NOTES_V8.1.2.md' --repo "$env:GITHUB_REPOSITORY"
