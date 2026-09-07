@@ -5,10 +5,10 @@ public static class V811UiUpgrade
     public static void Apply(MainForm form)
     {
         ArgumentNullException.ThrowIfNull(form);
-        form.Text = "Codex Doctor V8.1.2 原生维修中心";
+        form.Text = "Codex Doctor V8.1.3 原生维修中心";
 
         var title = form.Controls.OfType<Label>().FirstOrDefault(x => x.Text.StartsWith("Codex Doctor V8.1", StringComparison.Ordinal));
-        if (title is not null) title.Text = "Codex Doctor V8.1.2";
+        if (title is not null) title.Text = "Codex Doctor V8.1.3";
 
         var panel = form.Controls.OfType<FlowLayoutPanel>().FirstOrDefault()
             ?? throw new InvalidOperationException("未找到主操作区。");
@@ -168,7 +168,6 @@ public static class V811UiUpgrade
                 return;
             }
 
-            // UI Automation 需要一个已扫描确认的真实 Desktop 窗口；若客户端已安装但未运行，先按真实 EXE 启动再重新发现 PID。
             if (!desktop.IsRunning || desktop.ProcessIds.Count == 0)
             {
                 new RepairService().StartCodexDesktop(desktop.ExecutablePath);
