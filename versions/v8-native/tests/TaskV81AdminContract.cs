@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace CodexDoctor.Native.Tests;
 
@@ -9,17 +10,21 @@ internal static class TaskV81AdminContract
     {
         var root = FindSourceRoot();
         var manifest = Path.Combine(root, "app.manifest");
-        Require(File.Exists(manifest), "V8.1 必须包含 app.manifest。");
+        Require(File.Exists(manifest), "V8.1+ 必须包含 app.manifest。");
         var xml = File.ReadAllText(manifest);
-        Require(xml.Contains("requireAdministrator"), "manifest 必须强制 requireAdministrator。");
+        Require(xml.Contains("requireAdministrator"), "manifest 必须继续强制 requireAdministrator。");
 
+        // 8.1.0 引入的是管理员/UAC 安全能力，不是永久锁死 8.1.x 的版本号。
+        // 后续 V8 版本可以前向升级，但不得回退到管理员合同引入之前的版本。
         var csproj = File.ReadAllText(Path.Combine(root, "CodexDoctor.Native.csproj"));
-        Require(csproj.Contains("<Version>8.1."), "V8.1 系列项目版本必须保持在 8.1.x。");
+        var versionText = Regex.Match(csproj, @"<Version>([^<]+)</Version>").Groups[1].Value;
+        Require(Version.TryParse(versionText, out var currentVersion) && currentVersion >= new Version(8, 1, 0),
+            "当前 V8 项目版本不得低于 8.1.0 管理员安全合同基线。");
         foreach (var token in new[] { "<Company>Aix</Company>", "<Authors>Aix</Authors>" })
             Require(csproj.Contains(token), $"缺少产品元数据：{token}");
 
         var program = File.ReadAllText(Path.Combine(root, "Program.cs"));
-        Require(program.Contains("EnsureAdministratorOrExit"), "Program 启动主界面前必须做管理员运行时校验。");
+        Require(program.Contains("EnsureAdministratorOrExit"), "Program 启动主界面前必须继续做管理员运行时校验。");
     }
 
     private static string FindSourceRoot()
