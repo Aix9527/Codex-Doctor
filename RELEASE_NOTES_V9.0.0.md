@@ -132,7 +132,7 @@ V9.0.0 Release 门禁验证：
 
 - V9 行为测试（31 项）与窗口交互测试全部通过；
 - `CodexDoctorV9.exe` 具有 PE `MZ` 文件头；
-- manifest 保持 `requireAdministrator`；
+- manifest 保持 `asInvoker`，普通用户可启动；
 - 项目版本固定为 `9.0.0`；
 - 发布目录无 `.ps1`、`.psm1`、外置 `.dll`、`.runtimeconfig.json`、`.deps.json`；
 - C# 运行时代码不依赖 `powershell.exe` / `pwsh.exe`；
