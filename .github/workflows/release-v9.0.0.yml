@@ -55,7 +55,7 @@ jobs:
           }
 
           $manifest = Get-Content '.\versions\v9\app.manifest' -Raw
-          if ($manifest -notmatch 'requireAdministrator') { throw 'V9.0.0 manifest 未强制管理员权限。' }
+          if ($manifest -notmatch 'level="asInvoker"') { throw 'V9.0.0 manifest 未使用普通用户权限。' }
 
           $project = Get-Content '.\versions\v9\CodexDoctor.csproj' -Raw
           if ($project -notmatch '<Version>9\.0\.0</Version>') { throw '项目版本不是 9.0.0。' }
