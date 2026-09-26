@@ -80,6 +80,8 @@ jobs:
           Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
           robocopy '.\versions\v9' $stage /E /XD bin obj /NFL /NDL /NJH /NJS /NC /NS | Out-Null
+          if ($LASTEXITCODE -ge 8) { throw "robocopy 复制失败，退出码：$LASTEXITCODE" }
+          $global:LASTEXITCODE = 0
           Compress-Archive -Path (Join-Path $stage '*') -DestinationPath '.\dist\v9\Codex-Doctor-V9-Source.zip' -Force
 
       - name: 创建 GitHub Release v9.0.0
